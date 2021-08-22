@@ -14,7 +14,7 @@ edition = "2018"
 
 [features]
 default = ["std"]
-deser = [ "serde" ]
+deser = [ "serde", "generational-arena/serde" ]
 std = []
 
 [dependencies]
