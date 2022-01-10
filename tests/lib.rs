@@ -1,4 +1,4 @@
-use generational_indextree::Arena;
+use generational_indextree::{Arena, NodeId};
 #[cfg(feature = "par_iter")]
 use rayon::prelude::*;
 
@@ -166,4 +166,13 @@ fn insert_removed_node() {
     assert!(n2.checked_insert_after(n1, &mut arena).is_err());
     assert!(n1.checked_insert_before(n2, &mut arena).is_err());
     assert!(n2.checked_insert_before(n1, &mut arena).is_err());
+}
+
+#[test]
+fn new_node_with() {
+    let mut arena = Arena::new();
+    struct A { id: NodeId, val: u32 }
+    let foo = arena.new_node_with(|id| A { id, val: 10 });
+
+    assert_eq!(arena[foo].get().val, 10);
 }

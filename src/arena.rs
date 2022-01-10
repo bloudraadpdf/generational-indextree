@@ -56,6 +56,28 @@ impl<T> Arena<T> {
         NodeId::from_index(self.nodes.insert(Node::new(data)))
     }
 
+    /// Creates a new node via specified `create` function.
+    ///
+    /// `create` is called with the new node's node ID, allowing nodes that know their own ID.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the arena already has `usize::max_value()` nodes.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use generational_indextree::{Arena, NodeId};
+    /// let mut arena = Arena::new();
+    /// struct A { id: NodeId, val: u32 }
+    /// let foo = arena.new_node_with(|id| A { id, val: 10 });
+    ///
+    /// assert_eq!(*arena[foo].get().val, 10);
+    /// ```
+    pub fn new_node_with(&mut self, create: impl FnOnce(NodeId) -> T) -> NodeId {
+        NodeId::from_index(self.nodes.insert_with(|idx| Node::new(create(NodeId::from_index(idx)))))
+    }
+
     /// Counts the number of nodes in arena and returns it.
     ///
     /// # Examples
