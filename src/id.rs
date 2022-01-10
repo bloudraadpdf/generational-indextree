@@ -10,8 +10,8 @@ use generational_arena::Index;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    Ancestors, Arena, Children, Descendants, FollowingSiblings,
-    NodeError, PrecedingSiblings, relations::insert_with_neighbors, ReverseChildren, ReverseTraverse, siblings_range::SiblingsRange,
+    relations::insert_with_neighbors, siblings_range::SiblingsRange, Ancestors, Arena, Children,
+    Descendants, FollowingSiblings, NodeError, PrecedingSiblings, ReverseChildren, ReverseTraverse,
     Traverse,
 };
 
@@ -33,12 +33,11 @@ impl fmt::Display for NodeId {
     }
 }
 
-impl Into<Index> for NodeId {
-    fn into(self) -> Index {
-        self.index
+impl From<NodeId> for Index {
+    fn from(node_id: NodeId) -> Index {
+        node_id.index
     }
 }
-
 
 impl NodeId {
     /// Returns index.

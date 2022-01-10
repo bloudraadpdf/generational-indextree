@@ -6,9 +6,7 @@ use core::{
     ops::{Index, IndexMut},
 };
 #[cfg(feature = "std")]
-use std::{
-    ops::{Index, IndexMut},
-};
+use std::ops::{Index, IndexMut};
 
 use generational_arena::Arena as GenerationalArena;
 #[cfg(feature = "deser")]
@@ -35,7 +33,11 @@ impl<T> Arena<T> {
     }
 
     /// Create a new empty `Arena` with pre-allocated memory for `n` items.
-    pub fn with_capacity(n: usize) -> Arena<T> { Self { nodes: GenerationalArena::with_capacity(n) } }
+    pub fn with_capacity(n: usize) -> Arena<T> {
+        Self {
+            nodes: GenerationalArena::with_capacity(n),
+        }
+    }
 
     /// Creates a new node from its associated data.
     ///
@@ -76,7 +78,10 @@ impl<T> Arena<T> {
     /// assert_eq!(arena[foo].get().id, foo);
     /// ```
     pub fn new_node_with(&mut self, create: impl FnOnce(NodeId) -> T) -> NodeId {
-        NodeId::from_index(self.nodes.insert_with(|idx| Node::new(create(NodeId::from_index(idx)))))
+        NodeId::from_index(
+            self.nodes
+                .insert_with(|idx| Node::new(create(NodeId::from_index(idx)))),
+        )
     }
 
     /// Counts the number of nodes in arena and returns it.
@@ -197,7 +202,11 @@ impl<T> Arena<T> {
     /// assert_eq!(arena[idx1].get(), &"jig");
     /// assert_eq!(arena[idx2].get(), &"saw");
     /// ```
-    pub fn get2_mut(&mut self, i1: NodeId, i2: NodeId) -> (Option<&mut Node<T>>, Option<&mut Node<T>>) {
+    pub fn get2_mut(
+        &mut self,
+        i1: NodeId,
+        i2: NodeId,
+    ) -> (Option<&mut Node<T>>, Option<&mut Node<T>>) {
         self.nodes.get2_mut(i1.get_index(), i2.get_index())
     }
 
@@ -228,7 +237,7 @@ impl<T> Arena<T> {
     /// assert_eq!(iter.next().map(|node| *node.get()), Some("foo"));
     /// assert_eq!(iter.next().map(|node| *node.get()), None);
     /// ```
-    pub fn iter(&self) -> impl Iterator<Item=&Node<T>> {
+    pub fn iter(&self) -> impl Iterator<Item = &Node<T>> {
         self.nodes.iter().map(|pair| pair.1)
     }
 
@@ -245,14 +254,18 @@ impl<T> Arena<T> {
     /// assert_eq!(iter.next().map(|node| (node.0, *node.1.get())), Some((_bar, "bar")));
     /// assert_eq!(iter.next().map(|node| (node.0, *node.1.get())), None);
     /// ```
-    pub fn iter_pairs(&self) -> impl Iterator<Item=(NodeId, &Node<T>)> {
-        self.nodes.iter().map(|pair| (NodeId::from_index(pair.0), pair.1))
+    pub fn iter_pairs(&self) -> impl Iterator<Item = (NodeId, &Node<T>)> {
+        self.nodes
+            .iter()
+            .map(|pair| (NodeId::from_index(pair.0), pair.1))
     }
 }
 
 impl<T> Default for Arena<T> {
     fn default() -> Self {
-        Self { nodes: GenerationalArena::new() }
+        Self {
+            nodes: GenerationalArena::new(),
+        }
     }
 }
 
@@ -270,8 +283,7 @@ impl<T> IndexMut<NodeId> for Arena<T> {
     }
 }
 
-impl<T: PartialEq> PartialEq for Arena<T>
-{
+impl<T: PartialEq> PartialEq for Arena<T> {
     fn eq(&self, other: &Self) -> bool {
         let mut equal = self.nodes.len() == other.nodes.len();
         let mut self_iter = self.iter();
@@ -299,8 +311,11 @@ fn reuse_node() {
     n1_id.remove(&mut arena);
     n2_id.remove(&mut arena);
     n3_id.remove(&mut arena);
-    let n1_id = arena.new_node("1");
-    let n2_id = arena.new_node("2");
-    let n3_id = arena.new_node("3");
+    let new_n1_id = arena.new_node("1");
+    let new_n2_id = arena.new_node("2");
+    let new_n3_id = arena.new_node("3");
     assert_eq!(arena.nodes.len(), 3);
+    assert_ne!(n1_id, new_n1_id);
+    assert_ne!(n2_id, new_n2_id);
+    assert_ne!(n3_id, new_n3_id);
 }

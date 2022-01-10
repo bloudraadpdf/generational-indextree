@@ -11,7 +11,7 @@ fn success_create() {
             new_counter += 1;
             arena.new_node(new_counter)
         }};
-    };
+    }
 
     let a = new!(); // 1
     assert!(a.checked_append(new!(), arena).is_ok()); // 2
@@ -120,10 +120,7 @@ fn remove() {
     assert!(n2.checked_append(n6, arena).is_ok());
     n2.remove(arena);
 
-    let node_refs = arena
-        .iter()
-        .map(|x| *x.get())
-        .collect::<Vec<_>>();
+    let node_refs = arena.iter().map(|x| *x.get()).collect::<Vec<_>>();
     assert_eq!(node_refs, vec![0, 1, 3, 4, 5, 6]);
     // assert_eq!(n2.children(arena).collect::<Vec<_>>().len(), 0);
     // assert_eq!(n2.descendants(arena).collect::<Vec<_>>().len(), 1);
@@ -132,10 +129,7 @@ fn remove() {
 
     n3.remove(arena);
 
-    let node_refs = arena
-        .iter()
-        .map(|x| *x.get())
-        .collect::<Vec<_>>();
+    let node_refs = arena.iter().map(|x| *x.get()).collect::<Vec<_>>();
     assert_eq!(node_refs, vec![0, 1, 4, 5, 6]);
     // assert_eq!(n3.children(arena).collect::<Vec<_>>().len(), 0);
     // assert_eq!(n3.descendants(arena).collect::<Vec<_>>().len(), 1);
@@ -148,7 +142,7 @@ fn is_removed() {
     let arena = &mut Arena::new();
     let n0 = arena.new_node(0);
     n0.remove(arena);
-    assert_eq!(arena.count(),0);
+    assert_eq!(arena.count(), 0);
 }
 
 #[test]
@@ -171,8 +165,12 @@ fn insert_removed_node() {
 #[test]
 fn new_node_with() {
     let mut arena = Arena::new();
-    struct A { id: NodeId, val: u32 }
+    struct A {
+        id: NodeId,
+        val: u32,
+    }
     let foo = arena.new_node_with(|id| A { id, val: 10 });
 
     assert_eq!(arena[foo].get().val, 10);
+    assert_eq!(arena[foo].get().id, foo);
 }
