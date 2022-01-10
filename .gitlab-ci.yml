@@ -1,0 +1,74 @@
+stages:
+  - test
+  - doc
+  - publish
+
+variables:
+  CARGO_HOME: $CI_PROJECT_DIR/cargo
+
+default:
+  image: rust:1.57
+
+.publish:
+  stage: publish
+  cache:
+    paths:
+      - cargo/
+  allow_failure: false
+
+doc:
+  stage: doc
+  only:
+    - develop
+    - /^release/.*$/
+    - master
+  script:
+    - cargo doc --no-deps
+    - mv target/doc public
+    - echo '<meta http-equiv="refresh" content="0; url={{ LIBRARY NAME }}">' > public/index.html
+  artifacts:
+    paths:
+      - public
+  cache:
+    paths:
+      - target/
+      - cargo/
+  allow_failure: false
+
+test:
+  stage: test
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "master'
+      when: never
+    - when: on_success
+  script:
+    - cargo test
+    - cargo test --features deser
+  cache:
+    paths:
+      - cargo/
+  allow_failure: false
+
+publish-master:
+  extends: .publish
+  only:
+    - master
+  script:
+    - cargo test
+    - cargo login $CARGO_TOKEN
+    - cd phreak_rules && cargo publish --dry-run && cd ..
+    - cd phreak_facts && cargo publish --dry-run && cd ..
+    - cd phreak_engine && cargo publish --dry-run && cd ..
+  allow_failure: true
+
+publish-tags:
+  extends: .publish
+  only:
+    - tags
+  script:
+    - cargo test
+    - cargo login $CARGO_TOKEN
+    - cd phreak_rules && cargo publish && cd ..
+    - cd phreak_facts && cargo publish && cd ..
+    - sleep 30
+    - cd phreak_engine && cargo publish && cd ..
