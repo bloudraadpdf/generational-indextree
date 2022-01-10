@@ -11,9 +11,9 @@ default:
 
 .publish:
   stage: publish
-  cache:
-    paths:
-      - cargo/
+#  cache:
+#    paths:
+#      - cargo/
   allow_failure: false
 
 doc:
@@ -29,10 +29,10 @@ doc:
   artifacts:
     paths:
       - public
-  cache:
-    paths:
-      - target/
-      - cargo/
+#  cache:
+#    paths:
+#      - target/
+#      - cargo/
   allow_failure: false
 
 test:
@@ -56,8 +56,8 @@ publish-master:
   script:
     - cargo test
     - cargo clean
-    - rm -rf cargo
-    - rm -rf public
+#    - rm -rf cargo
+#    - rm -rf public
     - cargo login $CARGO_TOKEN
     - cargo publish --dry-run
   allow_failure: true
@@ -69,7 +69,7 @@ publish-tags:
   script:
     - cargo test
     - cargo clean
-    - rm -rf cargo
-    - rm -rf public
+#    - rm -rf cargo
+#    - rm -rf public
     - cargo login $CARGO_TOKEN
     - cargo publish
