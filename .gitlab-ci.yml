@@ -55,6 +55,7 @@ publish-master:
     - master
   script:
     - cargo test
+    - cargo clean
     - cargo login $CARGO_TOKEN
     - cargo publish --dry-run
   allow_failure: true
@@ -65,5 +66,6 @@ publish-tags:
     - tags
   script:
     - cargo test
+    - cargo clean
     - cargo login $CARGO_TOKEN
     - cargo publish
