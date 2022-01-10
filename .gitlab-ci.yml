@@ -56,9 +56,7 @@ publish-master:
   script:
     - cargo test
     - cargo login $CARGO_TOKEN
-    - cd phreak_rules && cargo publish --dry-run && cd ..
-    - cd phreak_facts && cargo publish --dry-run && cd ..
-    - cd phreak_engine && cargo publish --dry-run && cd ..
+    - cargo publish --dry-run
   allow_failure: true
 
 publish-tags:
@@ -68,7 +66,4 @@ publish-tags:
   script:
     - cargo test
     - cargo login $CARGO_TOKEN
-    - cd phreak_rules && cargo publish && cd ..
-    - cd phreak_facts && cargo publish && cd ..
-    - sleep 30
-    - cd phreak_engine && cargo publish && cd ..
+    - cargo publish
