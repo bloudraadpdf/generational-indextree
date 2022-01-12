@@ -8,7 +8,7 @@ use core::{
 #[cfg(feature = "std")]
 use std::ops::{Index, IndexMut};
 
-use generational_arena::Arena as GenerationalArena;
+use slotmap::{Key, SlotMap};
 #[cfg(feature = "deser")]
 use serde::{Deserialize, Serialize};
 
@@ -22,20 +22,20 @@ use crate::{Node, NodeId};
 /// An `Arena` structure containing certain [`Node`]s.
 ///
 /// [`Node`]: struct.Node.html
-pub struct Arena<T> {
-    pub(crate) nodes: GenerationalArena<Node<T>>,
+pub struct Arena<K: Key, T> {
+    pub(crate) nodes: SlotMap<K,Node<K, T>>,
 }
 
-impl<T> Arena<T> {
+impl<K: Key, T> Arena<K, T> {
     /// Creates a new empty `Arena`.
-    pub fn new() -> Arena<T> {
+    pub fn new() -> Arena<K, T> {
         Self::default()
     }
 
     /// Create a new empty `Arena` with pre-allocated memory for `n` items.
-    pub fn with_capacity(n: usize) -> Arena<T> {
+    pub fn with_capacity(n: usize) -> Arena<K, T> {
         Self {
-            nodes: GenerationalArena::with_capacity(n),
+            nodes: SlotMap::with_capacity_and_key(n),
         }
     }
 
@@ -49,12 +49,12 @@ impl<T> Arena<T> {
     ///
     /// ```
     /// # use generational_indextree::Arena;
-    /// let mut arena = Arena::new();
+    /// let mut arena = Arena::<slotmap::DefaultKey,_>::new();
     /// let foo = arena.new_node("foo");
     ///
     /// assert_eq!(*arena[foo].get(), "foo");
     /// ```
-    pub fn new_node(&mut self, data: T) -> NodeId {
+    pub fn new_node(&mut self, data: T) -> NodeId<K> {
         NodeId::from_index(self.nodes.insert(Node::new(data)))
     }
 
@@ -70,17 +70,17 @@ impl<T> Arena<T> {
     ///
     /// ```
     /// # use generational_indextree::{Arena, NodeId};
-    /// let mut arena = Arena::new();
-    /// struct A { id: NodeId, val: u32 }
+    /// let mut arena = Arena::<slotmap::DefaultKey,_>::new();
+    /// struct A { id: NodeId<slotmap::DefaultKey>, val: u32 }
     /// let foo = arena.new_node_with(|id| A { id, val: 10 });
     ///
     /// assert_eq!(arena[foo].get().val, 10);
     /// assert_eq!(arena[foo].get().id, foo);
     /// ```
-    pub fn new_node_with(&mut self, create: impl FnOnce(NodeId) -> T) -> NodeId {
+    pub fn new_node_with(&mut self, create: impl FnOnce(NodeId<K>) -> T) -> NodeId<K> {
         NodeId::from_index(
             self.nodes
-                .insert_with(|idx| Node::new(create(NodeId::from_index(idx)))),
+                .insert_with_key(|idx| Node::new(create(NodeId::from_index(idx)))),
         )
     }
 
@@ -90,7 +90,7 @@ impl<T> Arena<T> {
     ///
     /// ```
     /// # use generational_indextree::Arena;
-    /// let mut arena = Arena::new();
+    /// let mut arena = Arena::<slotmap::DefaultKey,_>::new();
     /// let foo = arena.new_node("foo");
     /// let _bar = arena.new_node("bar");
     /// assert_eq!(arena.count(), 2);
@@ -108,7 +108,7 @@ impl<T> Arena<T> {
     ///
     /// ```
     /// # use generational_indextree::Arena;
-    /// let mut arena = Arena::new();
+    /// let mut arena = Arena::<slotmap::DefaultKey,_>::new();
     /// assert!(arena.is_empty());
     ///
     /// let foo = arena.new_node("foo");
@@ -129,7 +129,7 @@ impl<T> Arena<T> {
     ///
     /// ```
     /// # use generational_indextree::{Arena, NodeId};
-    /// let mut arena = Arena::new();
+    /// let mut arena = Arena::<slotmap::DefaultKey,_>::new();
     /// let foo = arena.new_node("foo");
     /// assert_eq!(arena.get(foo).map(|node| *node.get()), Some("foo"));
     /// ```
@@ -139,17 +139,17 @@ impl<T> Arena<T> {
     ///
     /// ```
     /// # use generational_indextree::Arena;
-    /// let mut arena = Arena::new();
+    /// let mut arena = Arena::<slotmap::DefaultKey,_>::new();
     /// let foo = arena.new_node("foo");
     /// let bar = arena.new_node("bar");
     /// assert_eq!(arena.get(foo).map(|node| *node.get()), Some("foo"));
     ///
-    /// let mut another_arena = Arena::new();
+    /// let mut another_arena = Arena::<slotmap::DefaultKey,_>::new();
     /// let _ = another_arena.new_node("Another arena");
     /// assert_eq!(another_arena.get(foo).map(|node| *node.get()), Some("Another arena"));
     /// assert!(another_arena.get(bar).is_none());
     /// ```
-    pub fn get(&self, id: NodeId) -> Option<&Node<T>> {
+    pub fn get(&self, id: NodeId<K>) -> Option<&Node<K, T>> {
         self.nodes.get(id.get_index())
     }
 
@@ -162,14 +162,14 @@ impl<T> Arena<T> {
     ///
     /// ```
     /// # use generational_indextree::{Arena, NodeId};
-    /// let mut arena = Arena::new();
+    /// let mut arena = Arena::<slotmap::DefaultKey,_>::new();
     /// let foo = arena.new_node("foo");
     /// assert_eq!(arena.get(foo).map(|node| *node.get()), Some("foo"));
     ///
     /// *arena.get_mut(foo).expect("The `foo` node exists").get_mut() = "FOO!";
     /// assert_eq!(arena.get(foo).map(|node| *node.get()), Some("FOO!"));
     /// ```
-    pub fn get_mut(&mut self, id: NodeId) -> Option<&mut Node<T>> {
+    pub fn get_mut(&mut self, id: NodeId<K>) -> Option<&mut Node<K, T>> {
         self.nodes.get_mut(id.get_index())
     }
 
@@ -188,7 +188,7 @@ impl<T> Arena<T> {
     /// ```
     /// use generational_indextree::Arena;
     ///
-    /// let mut arena = Arena::new();
+    /// let mut arena = Arena::<slotmap::DefaultKey,_>::new();
     /// let idx1 = arena.new_node("foo");
     /// let idx2 = arena.new_node("bar");
     ///
@@ -204,10 +204,15 @@ impl<T> Arena<T> {
     /// ```
     pub fn get2_mut(
         &mut self,
-        i1: NodeId,
-        i2: NodeId,
-    ) -> (Option<&mut Node<T>>, Option<&mut Node<T>>) {
-        self.nodes.get2_mut(i1.get_index(), i2.get_index())
+        i1: NodeId<K>,
+        i2: NodeId<K>,
+    ) -> (Option<&mut Node<K, T>>, Option<&mut Node<K, T>>) {
+        self.nodes.get_disjoint_mut([i1.get_index(), i2.get_index()])
+            .map(|pair| {
+                let [zero,one] = pair;
+                (Some(zero),Some(one))
+            })
+            .unwrap_or((None,None))
     }
 
     /// Returns an iterator of all nodes in the arena in storage-order.
@@ -216,7 +221,7 @@ impl<T> Arena<T> {
     ///
     /// ```
     /// # use generational_indextree::Arena;
-    /// let mut arena = Arena::new();
+    /// let mut arena = Arena::<slotmap::DefaultKey,_>::new();
     /// let _foo = arena.new_node("foo");
     /// let _bar = arena.new_node("bar");
     ///
@@ -228,7 +233,7 @@ impl<T> Arena<T> {
     ///
     /// ```
     /// # use generational_indextree::Arena;
-    /// let mut arena = Arena::new();
+    /// let mut arena = Arena::<slotmap::DefaultKey,_>::new();
     /// let _foo = arena.new_node("foo");
     /// let bar = arena.new_node("bar");
     /// bar.remove(&mut arena);
@@ -237,15 +242,15 @@ impl<T> Arena<T> {
     /// assert_eq!(iter.next().map(|node| *node.get()), Some("foo"));
     /// assert_eq!(iter.next().map(|node| *node.get()), None);
     /// ```
-    pub fn iter(&self) -> impl Iterator<Item = &Node<T>> {
+    pub fn iter(&self) -> impl Iterator<Item = &Node<K, T>> {
         self.nodes.iter().map(|pair| pair.1)
     }
 
-    /// Returns an iterator of all pairs (NodeId, &Node<T>) in the arena in storage-order.
+    /// Returns an iterator of all pairs (NodeId<K>, &Node<K, T>) in the arena in storage-order.
     ///
     /// ```
     /// # use generational_indextree::Arena;
-    /// let mut arena = Arena::new();
+    /// let mut arena = Arena::<slotmap::DefaultKey,_>::new();
     /// let _foo = arena.new_node("foo");
     /// let _bar = arena.new_node("bar");
     ///
@@ -254,36 +259,36 @@ impl<T> Arena<T> {
     /// assert_eq!(iter.next().map(|node| (node.0, *node.1.get())), Some((_bar, "bar")));
     /// assert_eq!(iter.next().map(|node| (node.0, *node.1.get())), None);
     /// ```
-    pub fn iter_pairs(&self) -> impl Iterator<Item = (NodeId, &Node<T>)> {
+    pub fn iter_pairs(&self) -> impl Iterator<Item = (NodeId<K>, &Node<K, T>)> {
         self.nodes
             .iter()
             .map(|pair| (NodeId::from_index(pair.0), pair.1))
     }
 }
 
-impl<T> Default for Arena<T> {
+impl<K: Key, T> Default for Arena<K, T> {
     fn default() -> Self {
         Self {
-            nodes: GenerationalArena::new(),
+            nodes: SlotMap::with_capacity_and_key(0),
         }
     }
 }
 
-impl<T> Index<NodeId> for Arena<T> {
-    type Output = Node<T>;
+impl<K: Key, T> Index<NodeId<K>> for Arena<K, T> {
+    type Output = Node<K,T>;
 
-    fn index(&self, node: NodeId) -> &Node<T> {
+    fn index(&self, node: NodeId<K>) -> &Node<K, T> {
         &self.nodes[node.get_index()]
     }
 }
 
-impl<T> IndexMut<NodeId> for Arena<T> {
-    fn index_mut(&mut self, node: NodeId) -> &mut Node<T> {
+impl<K: Key, T> IndexMut<NodeId<K>> for Arena<K, T> {
+    fn index_mut(&mut self, node: NodeId<K>) -> &mut Node<K, T> {
         &mut self.nodes[node.get_index()]
     }
 }
 
-impl<T: PartialEq> PartialEq for Arena<T> {
+impl<K: Key, T: PartialEq> PartialEq for Arena<K, T> {
     fn eq(&self, other: &Self) -> bool {
         let mut equal = self.nodes.len() == other.nodes.len();
         let mut self_iter = self.iter();
@@ -300,11 +305,11 @@ impl<T: PartialEq> PartialEq for Arena<T> {
     }
 }
 
-impl<T: PartialEq> Eq for Arena<T> {}
+impl<K: Key, T: PartialEq> Eq for Arena<K, T> {}
 
 #[test]
 fn reuse_node() {
-    let mut arena = Arena::with_capacity(3);
+    let mut arena = Arena::<slotmap::DefaultKey,_>::with_capacity(3);
     let n1_id = arena.new_node("1");
     let n2_id = arena.new_node("2");
     let n3_id = arena.new_node("3");

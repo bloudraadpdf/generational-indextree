@@ -1,13 +1,14 @@
 //! Iterators.
 
+use slotmap::Key;
 use crate::{Arena, Node, NodeId};
 
 macro_rules! impl_node_iterator {
     ($name:ident, $next:expr) => {
-        impl<'a, T> Iterator for $name<'a, T> {
-            type Item = NodeId;
+        impl<'a, K: Key, T> Iterator for $name<'a, K, T> {
+            type Item = NodeId<K>;
 
-            fn next(&mut self) -> Option<NodeId> {
+            fn next(&mut self) -> Option<NodeId<K>> {
                 let node = self.node.take()?;
                 self.node = $next(&self.arena[node]);
                 Some(node)
@@ -18,14 +19,14 @@ macro_rules! impl_node_iterator {
 
 #[derive(Clone)]
 /// An iterator of the IDs of the ancestors a given node.
-pub struct Ancestors<'a, T> {
-    arena: &'a Arena<T>,
-    node: Option<NodeId>,
+pub struct Ancestors<'a, K: Key, T> {
+    arena: &'a Arena<K, T>,
+    node: Option<NodeId<K>>,
 }
-impl_node_iterator!(Ancestors, |node: &Node<T>| node.parent);
+impl_node_iterator!(Ancestors, |node: &Node<K, T>| node.parent);
 
-impl<'a, T> Ancestors<'a, T> {
-    pub(crate) fn new(arena: &'a Arena<T>, current: NodeId) -> Self {
+impl<'a, K: Key, T> Ancestors<'a, K, T> {
+    pub(crate) fn new(arena: &'a Arena<K, T>, current: NodeId<K>) -> Self {
         Self {
             arena,
             node: Some(current),
@@ -35,14 +36,14 @@ impl<'a, T> Ancestors<'a, T> {
 
 #[derive(Clone)]
 /// An iterator of the IDs of the siblings before a given node.
-pub struct PrecedingSiblings<'a, T> {
-    arena: &'a Arena<T>,
-    node: Option<NodeId>,
+pub struct PrecedingSiblings<'a, K: Key, T> {
+    arena: &'a Arena<K, T>,
+    node: Option<NodeId<K>>,
 }
-impl_node_iterator!(PrecedingSiblings, |node: &Node<T>| node.previous_sibling);
+impl_node_iterator!(PrecedingSiblings, |node: &Node<K, T>| node.previous_sibling);
 
-impl<'a, T> PrecedingSiblings<'a, T> {
-    pub(crate) fn new(arena: &'a Arena<T>, current: NodeId) -> Self {
+impl<'a, K: Key, T> PrecedingSiblings<'a, K, T> {
+    pub(crate) fn new(arena: &'a Arena<K, T>, current: NodeId<K>) -> Self {
         Self {
             arena,
             node: Some(current),
@@ -52,14 +53,14 @@ impl<'a, T> PrecedingSiblings<'a, T> {
 
 #[derive(Clone)]
 /// An iterator of the IDs of the siblings after a given node.
-pub struct FollowingSiblings<'a, T> {
-    arena: &'a Arena<T>,
-    node: Option<NodeId>,
+pub struct FollowingSiblings<'a, K: Key, T> {
+    arena: &'a Arena<K, T>,
+    node: Option<NodeId<K>>,
 }
-impl_node_iterator!(FollowingSiblings, |node: &Node<T>| node.next_sibling);
+impl_node_iterator!(FollowingSiblings, |node: &Node<K, T>| node.next_sibling);
 
-impl<'a, T> FollowingSiblings<'a, T> {
-    pub(crate) fn new(arena: &'a Arena<T>, current: NodeId) -> Self {
+impl<'a, K: Key, T> FollowingSiblings<'a, K, T> {
+    pub(crate) fn new(arena: &'a Arena<K, T>, current: NodeId<K>) -> Self {
         Self {
             arena,
             node: Some(current),
@@ -69,14 +70,14 @@ impl<'a, T> FollowingSiblings<'a, T> {
 
 #[derive(Clone)]
 /// An iterator of the IDs of the children of a given node, in insertion order.
-pub struct Children<'a, T> {
-    arena: &'a Arena<T>,
-    node: Option<NodeId>,
+pub struct Children<'a, K: Key, T> {
+    arena: &'a Arena<K, T>,
+    node: Option<NodeId<K>>,
 }
-impl_node_iterator!(Children, |node: &Node<T>| node.next_sibling);
+impl_node_iterator!(Children, |node: &Node<K, T>| node.next_sibling);
 
-impl<'a, T> Children<'a, T> {
-    pub(crate) fn new(arena: &'a Arena<T>, current: NodeId) -> Self {
+impl<'a, K: Key, T> Children<'a, K, T> {
+    pub(crate) fn new(arena: &'a Arena<K, T>, current: NodeId<K>) -> Self {
         Self {
             arena,
             node: arena[current].first_child,
@@ -86,14 +87,14 @@ impl<'a, T> Children<'a, T> {
 
 #[derive(Clone)]
 /// An iterator of the IDs of the children of a given node, in reverse insertion order.
-pub struct ReverseChildren<'a, T> {
-    arena: &'a Arena<T>,
-    node: Option<NodeId>,
+pub struct ReverseChildren<'a, K: Key, T> {
+    arena: &'a Arena<K, T>,
+    node: Option<NodeId<K>>,
 }
-impl_node_iterator!(ReverseChildren, |node: &Node<T>| node.previous_sibling);
+impl_node_iterator!(ReverseChildren, |node: &Node<K, T>| node.previous_sibling);
 
-impl<'a, T> ReverseChildren<'a, T> {
-    pub(crate) fn new(arena: &'a Arena<T>, current: NodeId) -> Self {
+impl<'a, K: Key, T> ReverseChildren<'a, K, T> {
+    pub(crate) fn new(arena: &'a Arena<K, T>, current: NodeId<K>) -> Self {
         Self {
             arena,
             node: arena[current].last_child,
@@ -105,18 +106,18 @@ impl<'a, T> ReverseChildren<'a, T> {
 /// An iterator of the IDs of a given node and its descendants, as a pre-order depth-first search where children are visited in insertion order.
 ///
 /// i.e. node -> first child -> second child
-pub struct Descendants<'a, T>(Traverse<'a, T>);
+pub struct Descendants<'a, K: Key, T>(Traverse<'a, K, T>);
 
-impl<'a, T> Descendants<'a, T> {
-    pub(crate) fn new(arena: &'a Arena<T>, current: NodeId) -> Self {
+impl<'a, K: Key, T> Descendants<'a, K, T> {
+    pub(crate) fn new(arena: &'a Arena<K, T>, current: NodeId<K>) -> Self {
         Self(Traverse::new(arena, current))
     }
 }
 
-impl<'a, T> Iterator for Descendants<'a, T> {
-    type Item = NodeId;
+impl<'a, K: Key, T> Iterator for Descendants<'a, K, T> {
+    type Item = NodeId<K>;
 
-    fn next(&mut self) -> Option<NodeId> {
+    fn next(&mut self) -> Option<NodeId<K>> {
         self.0.find_map(|edge| match edge {
             NodeEdge::Start(node) => Some(node),
             NodeEdge::End(_) => None,
@@ -126,18 +127,18 @@ impl<'a, T> Iterator for Descendants<'a, T> {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 /// Indicator if the node is at a start or endpoint of the tree
-pub enum NodeEdge {
+pub enum NodeEdge<K> {
     /// Indicates that start of a node that has children.
     ///
     /// Yielded by `Traverse::next()` before the node’s descendants. In HTML or
     /// XML, this corresponds to an opening tag like `<div>`.
-    Start(NodeId),
+    Start(NodeId<K>),
 
     /// Indicates that end of a node that has children.
     ///
     /// Yielded by `Traverse::next()` after the node’s descendants. In HTML or
     /// XML, this corresponds to a closing tag like `</div>`
-    End(NodeId),
+    End(NodeId<K>),
 }
 
 #[derive(Clone)]
@@ -145,14 +146,14 @@ pub enum NodeEdge {
 /// where node sides are visited start to end and children are visited in insertion order.
 ///
 /// i.e. node.start -> first child -> second child -> node.end
-pub struct Traverse<'a, T> {
-    arena: &'a Arena<T>,
-    root: NodeId,
-    next: Option<NodeEdge>,
+pub struct Traverse<'a, K: Key, T> {
+    arena: &'a Arena<K, T>,
+    root: NodeId<K>,
+    next: Option<NodeEdge<K>>,
 }
 
-impl<'a, T> Traverse<'a, T> {
-    pub(crate) fn new(arena: &'a Arena<T>, current: NodeId) -> Self {
+impl<'a, K: Key, T> Traverse<'a, K, T> {
+    pub(crate) fn new(arena: &'a Arena<K, T>, current: NodeId<K>) -> Self {
         Self {
             arena,
             root: current,
@@ -161,7 +162,7 @@ impl<'a, T> Traverse<'a, T> {
     }
 
     /// Calculates the next node.
-    fn next_of_next(&self, next: NodeEdge) -> Option<NodeEdge> {
+    fn next_of_next(&self, next: NodeEdge<K>) -> Option<NodeEdge<K>> {
         match next {
             NodeEdge::Start(node) => match self.arena[node].first_child {
                 Some(first_child) => Some(NodeEdge::Start(first_child)),
@@ -184,10 +185,10 @@ impl<'a, T> Traverse<'a, T> {
     }
 }
 
-impl<'a, T> Iterator for Traverse<'a, T> {
-    type Item = NodeEdge;
+impl<'a, K: Key, T> Iterator for Traverse<'a, K, T> {
+    type Item = NodeEdge<K>;
 
-    fn next(&mut self) -> Option<NodeEdge> {
+    fn next(&mut self) -> Option<NodeEdge<K>> {
         let next = self.next.take()?;
         self.next = self.next_of_next(next);
         Some(next)
@@ -199,14 +200,14 @@ impl<'a, T> Iterator for Traverse<'a, T> {
 /// where nodes are visited end to start and children are visited in reverse insertion order.
 ///
 /// i.e. node.end -> second child -> first child -> node.start
-pub struct ReverseTraverse<'a, T> {
-    arena: &'a Arena<T>,
-    root: NodeId,
-    next: Option<NodeEdge>,
+pub struct ReverseTraverse<'a, K: Key, T> {
+    arena: &'a Arena<K, T>,
+    root: NodeId<K>,
+    next: Option<NodeEdge<K>>,
 }
 
-impl<'a, T> ReverseTraverse<'a, T> {
-    pub(crate) fn new(arena: &'a Arena<T>, current: NodeId) -> Self {
+impl<'a, K:Key, T> ReverseTraverse<'a, K, T> {
+    pub(crate) fn new(arena: &'a Arena<K, T>, current: NodeId<K>) -> Self {
         Self {
             arena,
             root: current,
@@ -215,7 +216,7 @@ impl<'a, T> ReverseTraverse<'a, T> {
     }
 
     /// Calculates the next node.
-    fn next_of_next(&self, next: NodeEdge) -> Option<NodeEdge> {
+    fn next_of_next(&self, next: NodeEdge<K>) -> Option<NodeEdge<K>> {
         match next {
             NodeEdge::End(node) => match self.arena[node].last_child {
                 Some(last_child) => Some(NodeEdge::End(last_child)),
@@ -238,10 +239,10 @@ impl<'a, T> ReverseTraverse<'a, T> {
     }
 }
 
-impl<'a, T> Iterator for ReverseTraverse<'a, T> {
-    type Item = NodeEdge;
+impl<'a, K:Key, T> Iterator for ReverseTraverse<'a, K, T> {
+    type Item = NodeEdge<K>;
 
-    fn next(&mut self) -> Option<NodeEdge> {
+    fn next(&mut self) -> Option<NodeEdge<K>> {
         let next = self.next.take()?;
         self.next = self.next_of_next(next);
         Some(next)

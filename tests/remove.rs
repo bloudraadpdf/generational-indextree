@@ -5,7 +5,7 @@ use generational_indextree::{
 
 #[test]
 fn toplevel_with_no_child() {
-    let mut arena = Arena::new();
+    let mut arena = Arena::<slotmap::DefaultKey,_>::new();
     let n1 = arena.new_node("1");
     // arena
     // `-- 1
@@ -14,7 +14,7 @@ fn toplevel_with_no_child() {
 
 #[test]
 fn toplevel_with_single_child() {
-    let mut arena = Arena::new();
+    let mut arena = Arena::<slotmap::DefaultKey,_>::new();
     let n1 = arena.new_node("1");
     let n1_1 = arena.new_node("1_1");
     n1.append(n1_1, &mut arena);
@@ -33,7 +33,7 @@ fn toplevel_with_single_child() {
 
 #[test]
 fn toplevel_with_multiple_children() {
-    let mut arena = Arena::new();
+    let mut arena = Arena::<slotmap::DefaultKey,_>::new();
     let n1 = arena.new_node("1");
     let n1_1 = arena.new_node("1_1");
     n1.append(n1_1, &mut arena);
@@ -68,7 +68,7 @@ fn toplevel_with_multiple_children() {
 
 #[test]
 fn single_child_with_no_children() {
-    let mut arena = Arena::new();
+    let mut arena = Arena::<slotmap::DefaultKey,_>::new();
     let n1 = arena.new_node("1");
     let n1_1 = arena.new_node("1_1");
     n1.append(n1_1, &mut arena);
@@ -91,7 +91,7 @@ fn single_child_with_no_children() {
 
 #[test]
 fn single_child_with_single_child() {
-    let mut arena = Arena::new();
+    let mut arena = Arena::<slotmap::DefaultKey,_>::new();
     let n1 = arena.new_node("1");
     let n1_1 = arena.new_node("1_1");
     n1.append(n1_1, &mut arena);
@@ -127,7 +127,7 @@ fn single_child_with_single_child() {
 
 #[test]
 fn first_child_with_no_children() {
-    let mut arena = Arena::new();
+    let mut arena = Arena::<slotmap::DefaultKey,_>::new();
     let n1 = arena.new_node("1");
     let n1_1 = arena.new_node("1_1");
     n1.append(n1_1, &mut arena);
@@ -173,7 +173,7 @@ fn first_child_with_no_children() {
 
 #[test]
 fn middle_child_with_no_children() {
-    let mut arena = Arena::new();
+    let mut arena = Arena::<slotmap::DefaultKey,_>::new();
     let n1 = arena.new_node("1");
     let n1_1 = arena.new_node("1_1");
     n1.append(n1_1, &mut arena);
@@ -219,7 +219,7 @@ fn middle_child_with_no_children() {
 
 #[test]
 fn last_child_with_no_children() {
-    let mut arena = Arena::new();
+    let mut arena = Arena::<slotmap::DefaultKey,_>::new();
     let n1 = arena.new_node("1");
     let n1_1 = arena.new_node("1_1");
     n1.append(n1_1, &mut arena);
@@ -265,7 +265,7 @@ fn last_child_with_no_children() {
 
 #[test]
 fn middle_child_with_single_child() {
-    let mut arena = Arena::new();
+    let mut arena = Arena::<slotmap::DefaultKey,_>::new();
     let n1 = arena.new_node("1");
     let n1_1 = arena.new_node("1_1");
     n1.append(n1_1, &mut arena);
@@ -319,7 +319,7 @@ fn middle_child_with_single_child() {
 
 #[test]
 fn middle_child_with_multiple_children() {
-    let mut arena = Arena::new();
+    let mut arena = Arena::<slotmap::DefaultKey,_>::new();
     let n1 = arena.new_node("1");
     let n1_1 = arena.new_node("1_1");
     n1.append(n1_1, &mut arena);

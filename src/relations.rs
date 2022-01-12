@@ -1,5 +1,6 @@
 //! Utilities related to nodes relations.
 
+use slotmap::Key;
 use crate::{error::ConsistencyError, siblings_range::SiblingsRange, Arena, NodeId};
 
 /// Ensures the given parent, previous, and next nodes are consistent.
@@ -18,11 +19,11 @@ macro_rules! debug_assert_triangle_nodes {
 /// # Panics
 ///
 /// Panics if the given nodes are inconsistent.
-pub(crate) fn assert_triangle_nodes<T>(
-    arena: &Arena<T>,
-    parent: Option<NodeId>,
-    previous: Option<NodeId>,
-    next: Option<NodeId>,
+pub(crate) fn assert_triangle_nodes<K: Key, T>(
+    arena: &Arena<K, T>,
+    parent: Option<NodeId<K>>,
+    previous: Option<NodeId<K>>,
+    next: Option<NodeId<K>>,
 ) {
     if let Some(previous_node) = previous.map(|id| &arena[id]) {
         assert_eq!(
@@ -57,11 +58,11 @@ pub(crate) fn assert_triangle_nodes<T>(
 ///    /    \
 /// prev -> next
 /// ```
-pub(crate) fn connect_neighbors<T>(
-    arena: &mut Arena<T>,
-    parent: Option<NodeId>,
-    previous: Option<NodeId>,
-    next: Option<NodeId>,
+pub(crate) fn connect_neighbors<K:Key, T>(
+    arena: &mut Arena<K, T>,
+    parent: Option<NodeId<K>>,
+    previous: Option<NodeId<K>>,
+    next: Option<NodeId<K>>,
 ) {
     if cfg!(debug_assertions) {
         if let Some(parent_node) = parent.map(|id| &arena[id]) {
@@ -118,12 +119,12 @@ pub(crate) fn connect_neighbors<T>(
 ///   /       |      \
 /// prev -> (new) -> next
 /// ```
-pub(crate) fn insert_with_neighbors<T>(
-    arena: &mut Arena<T>,
-    new: NodeId,
-    parent: Option<NodeId>,
-    previous_sibling: Option<NodeId>,
-    next_sibling: Option<NodeId>,
+pub(crate) fn insert_with_neighbors<K:Key, T>(
+    arena: &mut Arena<K, T>,
+    new: NodeId<K>,
+    parent: Option<NodeId<K>>,
+    previous_sibling: Option<NodeId<K>>,
+    next_sibling: Option<NodeId<K>>,
 ) -> Result<(), ConsistencyError> {
     debug_assert_triangle_nodes!(arena, parent, previous_sibling, next_sibling);
     if previous_sibling == Some(new) || next_sibling == Some(new) {

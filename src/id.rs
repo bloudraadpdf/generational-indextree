@@ -5,9 +5,9 @@ use core::fmt;
 #[cfg(feature = "std")]
 use std::fmt;
 
-use generational_arena::Index;
 #[cfg(feature = "deser")]
 use serde::{Deserialize, Serialize};
+use slotmap::Key;
 
 use crate::{
     relations::insert_with_neighbors, siblings_range::SiblingsRange, Ancestors, Arena, Children,
@@ -23,30 +23,25 @@ use crate::{
 ///
 /// [`Arena`]: struct.Arena.html
 /// [`Node`]: struct.Node.html
-pub struct NodeId {
-    index: Index,
+pub struct NodeId<K> {
+    index: K,
 }
 
-impl fmt::Display for NodeId {
+impl<K: Key> fmt::Display for NodeId<K> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:?}", self.index)
     }
 }
 
-impl From<NodeId> for Index {
-    fn from(node_id: NodeId) -> Index {
-        node_id.index
-    }
-}
 
-impl NodeId {
+impl<K: Key> NodeId<K> {
     /// Returns index.
-    pub(crate) fn get_index(self) -> Index {
+    pub(crate) fn get_index(self) -> K {
         self.index
     }
 
     /// Creates a new `NodeId` from the given index.
-    pub(crate) fn from_index(index: Index) -> Self {
+    pub(crate) fn from_index(index: K) -> Self {
         NodeId { index }
     }
 
@@ -59,7 +54,7 @@ impl NodeId {
     ///
     /// ```
     /// # use generational_indextree::Arena;
-    /// # let mut arena = Arena::new();
+    /// # let mut arena = Arena::<slotmap::DefaultKey,_>::new();
     /// # let n1 = arena.new_node("1");
     /// # let n1_1 = arena.new_node("1_1");
     /// # n1.append(n1_1, &mut arena);
@@ -88,7 +83,7 @@ impl NodeId {
     /// ```
     ///
     /// [`skip`]: https://doc.rust-lang.org/stable/std/iter/trait.Iterator.html#method.skip
-    pub fn ancestors<T>(self, arena: &Arena<T>) -> Ancestors<'_, T> {
+    pub fn ancestors<T>(self, arena: &Arena<K, T>) -> Ancestors<'_, K, T> {
         Ancestors::new(arena, self)
     }
 
@@ -102,7 +97,7 @@ impl NodeId {
     ///
     /// ```
     /// # use generational_indextree::Arena;
-    /// # let mut arena = Arena::new();
+    /// # let mut arena = Arena::<slotmap::DefaultKey,_>::new();
     /// # let n1 = arena.new_node("1");
     /// # let n1_1 = arena.new_node("1_1");
     /// # n1.append(n1_1, &mut arena);
@@ -127,7 +122,7 @@ impl NodeId {
     /// ```
     ///
     /// [`skip`]: https://doc.rust-lang.org/stable/std/iter/trait.Iterator.html#method.skip
-    pub fn preceding_siblings<T>(self, arena: &Arena<T>) -> PrecedingSiblings<'_, T> {
+    pub fn preceding_siblings<T>(self, arena: &Arena<K, T>) -> PrecedingSiblings<'_, K, T> {
         PrecedingSiblings::new(arena, self)
     }
 
@@ -141,7 +136,7 @@ impl NodeId {
     ///
     /// ```
     /// # use generational_indextree::Arena;
-    /// # let mut arena = Arena::new();
+    /// # let mut arena = Arena::<slotmap::DefaultKey,_>::new();
     /// # let n1 = arena.new_node("1");
     /// # let n1_1 = arena.new_node("1_1");
     /// # n1.append(n1_1, &mut arena);
@@ -166,7 +161,7 @@ impl NodeId {
     /// ```
     ///
     /// [`skip`]: https://doc.rust-lang.org/stable/std/iter/trait.Iterator.html#method.skip
-    pub fn following_siblings<T>(self, arena: &Arena<T>) -> FollowingSiblings<'_, T> {
+    pub fn following_siblings<T>(self, arena: &Arena<K, T>) -> FollowingSiblings<'_, K, T> {
         FollowingSiblings::new(arena, self)
     }
 
@@ -176,7 +171,7 @@ impl NodeId {
     ///
     /// ```
     /// # use generational_indextree::Arena;
-    /// # let mut arena = Arena::new();
+    /// # let mut arena = Arena::<slotmap::DefaultKey,_>::new();
     /// # let n1 = arena.new_node("1");
     /// # let n1_1 = arena.new_node("1_1");
     /// # n1.append(n1_1, &mut arena);
@@ -200,7 +195,7 @@ impl NodeId {
     /// assert_eq!(iter.next(), Some(n1_3));
     /// assert_eq!(iter.next(), None);
     /// ```
-    pub fn children<T>(self, arena: &Arena<T>) -> Children<'_, T> {
+    pub fn children<T>(self, arena: &Arena<K, T>) -> Children<'_, K, T> {
         Children::new(arena, self)
     }
 
@@ -211,7 +206,7 @@ impl NodeId {
     ///
     /// ```
     /// # use generational_indextree::Arena;
-    /// # let mut arena = Arena::new();
+    /// # let mut arena = Arena::<slotmap::DefaultKey,_>::new();
     /// # let n1 = arena.new_node("1");
     /// # let n1_1 = arena.new_node("1_1");
     /// # n1.append(n1_1, &mut arena);
@@ -235,7 +230,7 @@ impl NodeId {
     /// assert_eq!(iter.next(), Some(n1_1));
     /// assert_eq!(iter.next(), None);
     /// ```
-    pub fn reverse_children<T>(self, arena: &Arena<T>) -> ReverseChildren<'_, T> {
+    pub fn reverse_children<T>(self, arena: &Arena<K, T>) -> ReverseChildren<'_, K, T> {
         ReverseChildren::new(arena, self)
     }
 
@@ -251,7 +246,7 @@ impl NodeId {
     ///
     /// ```
     /// # use generational_indextree::Arena;
-    /// # let mut arena = Arena::new();
+    /// # let mut arena = Arena::<slotmap::DefaultKey,_>::new();
     /// # let n1 = arena.new_node("1");
     /// # let n1_1 = arena.new_node("1_1");
     /// # n1.append(n1_1, &mut arena);
@@ -283,7 +278,7 @@ impl NodeId {
     /// ```
     ///
     /// [`skip`]: https://doc.rust-lang.org/stable/std/iter/trait.Iterator.html#method.skip
-    pub fn descendants<T>(self, arena: &Arena<T>) -> Descendants<'_, T> {
+    pub fn descendants<T>(self, arena: &Arena<K, T>) -> Descendants<'_, K, T> {
         Descendants::new(arena, self)
     }
 
@@ -296,7 +291,7 @@ impl NodeId {
     ///
     /// ```
     /// # use generational_indextree::{Arena, NodeEdge};
-    /// # let mut arena = Arena::new();
+    /// # let mut arena = Arena::<slotmap::DefaultKey,_>::new();
     /// # let n1 = arena.new_node("1");
     /// # let n1_1 = arena.new_node("1_1");
     /// # n1.append(n1_1, &mut arena);
@@ -327,7 +322,7 @@ impl NodeId {
     /// assert_eq!(iter.next(), Some(NodeEdge::End(n1)));
     /// assert_eq!(iter.next(), None);
     /// ```
-    pub fn traverse<T>(self, arena: &Arena<T>) -> Traverse<'_, T> {
+    pub fn traverse<T>(self, arena: &Arena<K, T>) -> Traverse<'_, K, T> {
         Traverse::new(arena, self)
     }
 
@@ -340,7 +335,7 @@ impl NodeId {
     ///
     /// ```
     /// # use generational_indextree::{Arena, NodeEdge};
-    /// # let mut arena = Arena::new();
+    /// # let mut arena = Arena::<slotmap::DefaultKey,_>::new();
     /// # let n1 = arena.new_node("1");
     /// # let n1_1 = arena.new_node("1_1");
     /// # n1.append(n1_1, &mut arena);
@@ -374,7 +369,7 @@ impl NodeId {
     ///
     /// ```
     /// # use generational_indextree::{Arena, NodeEdge};
-    /// # let mut arena = Arena::new();
+    /// # let mut arena = Arena::<slotmap::DefaultKey,_>::new();
     /// # let n1 = arena.new_node("1");
     /// # let n1_1 = arena.new_node("1_1");
     /// # n1.append(n1_1, &mut arena);
@@ -397,7 +392,7 @@ impl NodeId {
     /// reverse.reverse();
     /// assert_eq!(traverse, reverse);
     /// ```
-    pub fn reverse_traverse<T>(self, arena: &Arena<T>) -> ReverseTraverse<'_, T> {
+    pub fn reverse_traverse<T>(self, arena: &Arena<K, T>) -> ReverseTraverse<'_, K, T> {
         ReverseTraverse::new(arena, self)
     }
 
@@ -407,7 +402,7 @@ impl NodeId {
     ///
     /// ```
     /// # use generational_indextree::{Arena, NodeEdge};
-    /// # let mut arena = Arena::new();
+    /// # let mut arena = Arena::<slotmap::DefaultKey,_>::new();
     /// # let n1 = arena.new_node("1");
     /// # let n1_1 = arena.new_node("1_1");
     /// # n1.append(n1_1, &mut arena);
@@ -447,7 +442,7 @@ impl NodeId {
     /// assert_eq!(iter.next(), Some(n1_3));
     /// assert_eq!(iter.next(), None);
     /// ```
-    pub fn detach<T>(self, arena: &mut Arena<T>) {
+    pub fn detach<T>(self, arena: &mut Arena<K, T>) {
         let range = SiblingsRange::new(self, self).detach_from_siblings(arena);
         range
             .rewrite_parents(arena, None)
@@ -472,7 +467,7 @@ impl NodeId {
     ///
     /// ```
     /// # use generational_indextree::Arena;
-    /// let mut arena = Arena::new();
+    /// let mut arena = Arena::<slotmap::DefaultKey,_>::new();
     /// let n1 = arena.new_node("1");
     /// let n1_1 = arena.new_node("1_1");
     /// n1.append(n1_1, &mut arena);
@@ -497,7 +492,7 @@ impl NodeId {
     ///
     /// [`Node::is_removed()`]: struct.Node.html#method.is_removed
     /// [`remove`]: struct.NodeId.html#method.remove
-    pub fn append<T>(self, new_child: NodeId, arena: &mut Arena<T>) {
+    pub fn append<T>(self, new_child: NodeId<K>, arena: &mut Arena<K, T>) {
         self.checked_append(new_child, arena)
             .expect("Preconditions not met: invalid argument");
     }
@@ -515,7 +510,7 @@ impl NodeId {
     ///
     /// ```
     /// # use generational_indextree::Arena;
-    /// let mut arena = Arena::new();
+    /// let mut arena = Arena::<slotmap::DefaultKey,_>::new();
     /// let n1 = arena.new_node("1");
     /// assert!(n1.checked_append(n1, &mut arena).is_err());
     ///
@@ -529,13 +524,13 @@ impl NodeId {
     /// [`remove`]: struct.NodeId.html#method.remove
     pub fn checked_append<T>(
         self,
-        new_child: NodeId,
-        arena: &mut Arena<T>,
+        new_child: NodeId<K>,
+        arena: &mut Arena<K, T>,
     ) -> Result<(), NodeError> {
         if new_child == self {
             return Err(NodeError::AppendSelf);
         }
-        if !arena.nodes.contains(self.index) || !arena.nodes.contains(new_child.index) {
+        if !arena.nodes.contains_key(self.index) || !arena.nodes.contains_key(new_child.index) {
             // if arena[self].is_removed() || arena[new_child].is_removed() {
             return Err(NodeError::Removed);
         }
@@ -559,7 +554,7 @@ impl NodeId {
     ///
     /// ```
     /// # use generational_indextree::Arena;
-    /// let mut arena = Arena::new();
+    /// let mut arena = Arena::<slotmap::DefaultKey,_>::new();
     /// let n1 = arena.new_node("1");
     /// let n1_1 = arena.new_node("1_1");
     /// n1.prepend(n1_1, &mut arena);
@@ -584,7 +579,7 @@ impl NodeId {
     ///
     /// [`Node::is_removed()`]: struct.Node.html#method.is_removed
     /// [`remove`]: struct.NodeId.html#method.remove
-    pub fn prepend<T>(self, new_child: NodeId, arena: &mut Arena<T>) {
+    pub fn prepend<T>(self, new_child: NodeId<K>, arena: &mut Arena<K, T>) {
         self.checked_prepend(new_child, arena)
             .expect("Preconditions not met: invalid argument");
     }
@@ -602,7 +597,7 @@ impl NodeId {
     ///
     /// ```
     /// # use generational_indextree::Arena;
-    /// let mut arena = Arena::new();
+    /// let mut arena = Arena::<slotmap::DefaultKey,_>::new();
     /// let n1 = arena.new_node("1");
     /// assert!(n1.checked_prepend(n1, &mut arena).is_err());
     ///
@@ -616,13 +611,13 @@ impl NodeId {
     /// [`remove`]: struct.NodeId.html#method.remove
     pub fn checked_prepend<T>(
         self,
-        new_child: NodeId,
-        arena: &mut Arena<T>,
+        new_child: NodeId<K>,
+        arena: &mut Arena<K, T>,
     ) -> Result<(), NodeError> {
         if new_child == self {
             return Err(NodeError::PrependSelf);
         }
-        if !arena.nodes.contains(self.index) || !arena.nodes.contains(new_child.index) {
+        if !arena.nodes.contains_key(self.index) || !arena.nodes.contains_key(new_child.index) {
             return Err(NodeError::Removed);
         }
         insert_with_neighbors(arena, new_child, Some(self), None, arena[self].first_child)
@@ -644,7 +639,7 @@ impl NodeId {
     ///
     /// ```
     /// # use generational_indextree::Arena;
-    /// # let mut arena = Arena::new();
+    /// # let mut arena = Arena::<slotmap::DefaultKey,_>::new();
     /// # let n1 = arena.new_node("1");
     /// # let n1_1 = arena.new_node("1_1");
     /// # n1.append(n1_1, &mut arena);
@@ -675,7 +670,7 @@ impl NodeId {
     ///
     /// [`Node::is_removed()`]: struct.Node.html#method.is_removed
     /// [`remove`]: struct.NodeId.html#method.remove
-    pub fn insert_after<T>(self, new_sibling: NodeId, arena: &mut Arena<T>) {
+    pub fn insert_after<T>(self, new_sibling: NodeId<K>, arena: &mut Arena<K, T>) {
         self.checked_insert_after(new_sibling, arena)
             .expect("Preconditions not met: invalid argument");
     }
@@ -693,7 +688,7 @@ impl NodeId {
     ///
     /// ```
     /// # use generational_indextree::Arena;
-    /// let mut arena = Arena::new();
+    /// let mut arena = Arena::<slotmap::DefaultKey,_>::new();
     /// let n1 = arena.new_node("1");
     /// assert!(n1.checked_insert_after(n1, &mut arena).is_err());
     ///
@@ -707,13 +702,13 @@ impl NodeId {
     /// [`remove`]: struct.NodeId.html#method.remove
     pub fn checked_insert_after<T>(
         self,
-        new_sibling: NodeId,
-        arena: &mut Arena<T>,
+        new_sibling: NodeId<K>,
+        arena: &mut Arena<K, T>,
     ) -> Result<(), NodeError> {
         if new_sibling == self {
             return Err(NodeError::InsertAfterSelf);
         }
-        if !arena.nodes.contains(self.index) || !arena.nodes.contains(new_sibling.index) {
+        if !arena.nodes.contains_key(self.index) || !arena.nodes.contains_key(new_sibling.index) {
             return Err(NodeError::Removed);
         }
         new_sibling.detach(arena);
@@ -740,7 +735,7 @@ impl NodeId {
     ///
     /// ```
     /// # use generational_indextree::Arena;
-    /// let mut arena = Arena::new();
+    /// let mut arena = Arena::<slotmap::DefaultKey,_>::new();
     /// let n1 = arena.new_node("1");
     /// let n1_1 = arena.new_node("1_1");
     /// n1.append(n1_1, &mut arena);
@@ -770,7 +765,7 @@ impl NodeId {
     /// ```
     ///
     /// [`remove`]: struct.NodeId.html#method.remove
-    pub fn insert_before<T>(self, new_sibling: NodeId, arena: &mut Arena<T>) {
+    pub fn insert_before<T>(self, new_sibling: NodeId<K>, arena: &mut Arena<K, T>) {
         self.checked_insert_before(new_sibling, arena)
             .expect("Preconditions not met: invalid argument");
     }
@@ -788,7 +783,7 @@ impl NodeId {
     ///
     /// ```
     /// # use generational_indextree::Arena;
-    /// let mut arena = Arena::new();
+    /// let mut arena = Arena::<slotmap::DefaultKey,_>::new();
     /// let n1 = arena.new_node("1");
     /// assert!(n1.checked_insert_before(n1, &mut arena).is_err());
     ///
@@ -801,13 +796,13 @@ impl NodeId {
     /// [`remove`]: struct.NodeId.html#method.remove
     pub fn checked_insert_before<T>(
         self,
-        new_sibling: NodeId,
-        arena: &mut Arena<T>,
+        new_sibling: NodeId<K>,
+        arena: &mut Arena<K, T>,
     ) -> Result<(), NodeError> {
         if new_sibling == self {
             return Err(NodeError::InsertBeforeSelf);
         }
-        if !arena.nodes.contains(self.index) || !arena.nodes.contains(new_sibling.index) {
+        if !arena.nodes.contains_key(self.index) || !arena.nodes.contains_key(new_sibling.index) {
             return Err(NodeError::Removed);
         }
         new_sibling.detach(arena);
@@ -834,7 +829,7 @@ impl NodeId {
     ///
     /// ```
     /// # use generational_indextree::Arena;
-    /// # let mut arena = Arena::new();
+    /// # let mut arena = Arena::<slotmap::DefaultKey,_>::new();
     /// # let n1 = arena.new_node("1");
     /// # let n1_1 = arena.new_node("1_1");
     /// # n1.append(n1_1, &mut arena);
@@ -866,7 +861,7 @@ impl NodeId {
     /// assert_eq!(iter.next(), None);
     /// ```
     ///
-    pub fn remove<T>(self, arena: &mut Arena<T>) {
+    pub fn remove<T>(self, arena: &mut Arena<K, T>) {
         debug_assert_triangle_nodes!(
             arena,
             arena[self].parent,
@@ -911,7 +906,7 @@ impl NodeId {
     ///
     /// ```
     /// # use generational_indextree::Arena;
-    /// # let mut arena = Arena::new();
+    /// # let mut arena = Arena::<slotmap::DefaultKey,_>::new();
     /// # let n1 = arena.new_node("1");
     /// # let n1_1 = arena.new_node("1_1");
     /// # n1.append(n1_1, &mut arena);
@@ -941,7 +936,7 @@ impl NodeId {
     /// assert_eq!(iter.next(), None);
     /// ```
     ///
-    pub fn remove_subtree<T>(self, arena: &mut Arena<T>) {
+    pub fn remove_subtree<T>(self, arena: &mut Arena<K, T>) {
         self.detach(arena);
 
         // // use a preorder traversal to remove node.

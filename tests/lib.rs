@@ -5,7 +5,7 @@ use rayon::prelude::*;
 #[test]
 fn success_create() {
     let mut new_counter = 0;
-    let arena = &mut Arena::new();
+    let arena = &mut Arena::<slotmap::DefaultKey,_>::new();
     macro_rules! new {
         () => {{
             new_counter += 1;
@@ -39,7 +39,7 @@ fn success_create() {
 #[test]
 // Issue #30.
 fn first_prepend() {
-    let arena = &mut Arena::new();
+    let arena = &mut Arena::<slotmap::DefaultKey,_>::new();
     let a = arena.new_node(1);
     let b = arena.new_node(2);
     assert!(a.checked_prepend(b, arena).is_ok());
@@ -47,7 +47,7 @@ fn first_prepend() {
 
 #[test]
 fn success_detach() {
-    let arena = &mut Arena::new();
+    let arena = &mut Arena::<slotmap::DefaultKey,_>::new();
     let a = arena.new_node(1);
     let b = arena.new_node(1);
     assert!(a.checked_append(b, arena).is_ok());
@@ -58,21 +58,21 @@ fn success_detach() {
 
 #[test]
 fn get() {
-    let arena = &mut Arena::new();
+    let arena = &mut Arena::<slotmap::DefaultKey,_>::new();
     let id = arena.new_node(1);
     assert_eq!(*arena.get(id).unwrap().get(), 1);
 }
 
 #[test]
 fn get_mut() {
-    let arena = &mut Arena::new();
+    let arena = &mut Arena::<slotmap::DefaultKey,_>::new();
     let id = arena.new_node(1);
     assert_eq!(*arena.get_mut(id).unwrap().get(), 1);
 }
 
 #[test]
 fn iter() {
-    let arena = &mut Arena::new();
+    let arena = &mut Arena::<slotmap::DefaultKey,_>::new();
     let a = arena.new_node(1);
     let b = arena.new_node(2);
     let c = arena.new_node(3);
@@ -88,7 +88,7 @@ fn iter() {
 #[cfg(feature = "par_iter")]
 #[test]
 fn par_iter() {
-    let arena = &mut Arena::new();
+    let arena = &mut Arena::<slotmap::DefaultKey,_>::new();
     let a = arena.new_node(1);
     let b = arena.new_node(2);
     let c = arena.new_node(3);
@@ -103,7 +103,7 @@ fn par_iter() {
 
 #[test]
 fn remove() {
-    let arena = &mut Arena::new();
+    let arena = &mut Arena::<slotmap::DefaultKey,_>::new();
     let n0 = arena.new_node(0);
     let n1 = arena.new_node(1);
     let n2 = arena.new_node(2);
@@ -139,7 +139,7 @@ fn remove() {
 
 #[test]
 fn is_removed() {
-    let arena = &mut Arena::new();
+    let arena = &mut Arena::<slotmap::DefaultKey,_>::new();
     let n0 = arena.new_node(0);
     n0.remove(arena);
     assert_eq!(arena.count(), 0);
@@ -147,7 +147,7 @@ fn is_removed() {
 
 #[test]
 fn insert_removed_node() {
-    let mut arena = Arena::new();
+    let mut arena = Arena::<slotmap::DefaultKey,_>::new();
     let n1 = arena.new_node("1");
     let n2 = arena.new_node("2");
     n2.remove(&mut arena);
@@ -164,9 +164,9 @@ fn insert_removed_node() {
 
 #[test]
 fn new_node_with() {
-    let mut arena = Arena::new();
+    let mut arena = Arena::<slotmap::DefaultKey,_>::new();
     struct A {
-        id: NodeId,
+        id: NodeId<slotmap::DefaultKey>,
         val: u32,
     }
     let foo = arena.new_node_with(|id| A { id, val: 10 });

@@ -2,7 +2,7 @@ use generational_indextree::Arena;
 
 pub fn main() {
     // Create a new arena
-    let arena = &mut Arena::new();
+    let arena = &mut Arena::<slotmap::DefaultKey,_>::new();
 
     // Add some new nodes to the arena
     let a = arena.new_node(1);

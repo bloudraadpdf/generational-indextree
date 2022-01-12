@@ -8,25 +8,26 @@ use serde::{Deserialize, Serialize};
 
 #[cfg(feature = "std")]
 use std::fmt;
+use slotmap::Key;
 
 use crate::NodeId;
 
 #[derive(PartialEq, Eq, Clone, Debug)]
 #[cfg_attr(feature = "deser", derive(Deserialize, Serialize))]
 /// A node within a particular `Arena`.
-pub struct Node<T> {
+pub struct Node<K, T> {
     // Keep these private (with read-only accessors) so that we can keep them
     // consistent. E.g. the parent of a node’s child is that node.
-    pub(crate) parent: Option<NodeId>,
-    pub(crate) previous_sibling: Option<NodeId>,
-    pub(crate) next_sibling: Option<NodeId>,
-    pub(crate) first_child: Option<NodeId>,
-    pub(crate) last_child: Option<NodeId>,
+    pub(crate) parent: Option<NodeId<K>>,
+    pub(crate) previous_sibling: Option<NodeId<K>>,
+    pub(crate) next_sibling: Option<NodeId<K>>,
+    pub(crate) first_child: Option<NodeId<K>>,
+    pub(crate) last_child: Option<NodeId<K>>,
     /// The actual data which will be stored within the tree.
     pub(crate) data: T,
 }
 
-impl<T> Node<T> {
+impl<K: Key, T> Node<K, T> {
     /// Returns a reference to the node data.
     pub fn get(&self) -> &T {
         &self.data
@@ -56,7 +57,7 @@ impl<T> Node<T> {
     ///
     /// ```
     /// # use generational_indextree::Arena;
-    /// # let mut arena = Arena::new();
+    /// # let mut arena = Arena::<slotmap::DefaultKey,_>::new();
     /// # let n1 = arena.new_node("1");
     /// # let n1_1 = arena.new_node("1_1");
     /// # let n1_2 = arena.new_node("1_2");
@@ -74,7 +75,7 @@ impl<T> Node<T> {
     /// assert_eq!(arena[n1_2].parent(), Some(n1));
     /// assert_eq!(arena[n1_3].parent(), Some(n1));
     /// ```
-    pub fn parent(&self) -> Option<NodeId> {
+    pub fn parent(&self) -> Option<NodeId<K>> {
         self.parent
     }
 
@@ -84,7 +85,7 @@ impl<T> Node<T> {
     ///
     /// ```
     /// # use generational_indextree::Arena;
-    /// # let mut arena = Arena::new();
+    /// # let mut arena = Arena::<slotmap::DefaultKey,_>::new();
     /// # let n1 = arena.new_node("1");
     /// # let n1_1 = arena.new_node("1_1");
     /// # n1.append(n1_1, &mut arena);
@@ -102,7 +103,7 @@ impl<T> Node<T> {
     /// assert_eq!(arena[n1_2].first_child(), None);
     /// assert_eq!(arena[n1_3].first_child(), None);
     /// ```
-    pub fn first_child(&self) -> Option<NodeId> {
+    pub fn first_child(&self) -> Option<NodeId<K>> {
         self.first_child
     }
 
@@ -112,7 +113,7 @@ impl<T> Node<T> {
     ///
     /// ```
     /// # use generational_indextree::Arena;
-    /// # let mut arena = Arena::new();
+    /// # let mut arena = Arena::<slotmap::DefaultKey,_>::new();
     /// # let n1 = arena.new_node("1");
     /// # let n1_1 = arena.new_node("1_1");
     /// # n1.append(n1_1, &mut arena);
@@ -130,7 +131,7 @@ impl<T> Node<T> {
     /// assert_eq!(arena[n1_2].last_child(), None);
     /// assert_eq!(arena[n1_3].last_child(), None);
     /// ```
-    pub fn last_child(&self) -> Option<NodeId> {
+    pub fn last_child(&self) -> Option<NodeId<K>> {
         self.last_child
     }
 
@@ -141,7 +142,7 @@ impl<T> Node<T> {
     ///
     /// ```
     /// # use generational_indextree::Arena;
-    /// # let mut arena = Arena::new();
+    /// # let mut arena = Arena::<slotmap::DefaultKey,_>::new();
     /// # let n1 = arena.new_node("1");
     /// # let n1_1 = arena.new_node("1_1");
     /// # n1.append(n1_1, &mut arena);
@@ -165,7 +166,7 @@ impl<T> Node<T> {
     ///
     /// ```
     /// # use generational_indextree::Arena;
-    /// let mut arena = Arena::new();
+    /// let mut arena = Arena::<slotmap::DefaultKey,_>::new();
     /// let n1 = arena.new_node("1");
     /// let n2 = arena.new_node("2");
     /// // arena
@@ -184,7 +185,7 @@ impl<T> Node<T> {
     /// assert_eq!(arena[n1].previous_sibling(), None);
     /// assert_eq!(arena[n2].previous_sibling(), Some(n1));
     /// ```
-    pub fn previous_sibling(&self) -> Option<NodeId> {
+    pub fn previous_sibling(&self) -> Option<NodeId<K>> {
         self.previous_sibling
     }
 
@@ -195,7 +196,7 @@ impl<T> Node<T> {
     ///
     /// ```
     /// # use generational_indextree::Arena;
-    /// # let mut arena = Arena::new();
+    /// # let mut arena = Arena::<slotmap::DefaultKey,_>::new();
     /// # let n1 = arena.new_node("1");
     /// # let n1_1 = arena.new_node("1_1");
     /// # n1.append(n1_1, &mut arena);
@@ -219,7 +220,7 @@ impl<T> Node<T> {
     ///
     /// ```
     /// # use generational_indextree::Arena;
-    /// let mut arena = Arena::new();
+    /// let mut arena = Arena::<slotmap::DefaultKey,_>::new();
     /// let n1 = arena.new_node("1");
     /// let n2 = arena.new_node("2");
     /// // arena
@@ -238,7 +239,7 @@ impl<T> Node<T> {
     /// assert_eq!(arena[n1].next_sibling(), Some(n2));
     /// assert_eq!(arena[n2].next_sibling(), None);
     /// ```
-    pub fn next_sibling(&self) -> Option<NodeId> {
+    pub fn next_sibling(&self) -> Option<NodeId<K>> {
         self.next_sibling
     }
 
@@ -248,7 +249,7 @@ impl<T> Node<T> {
     }
 }
 
-impl<T> fmt::Display for Node<T> {
+impl<K: Key, T> fmt::Display for Node<K, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if let Some(parent) = self.parent {
             write!(f, "parent: {}; ", parent)?;

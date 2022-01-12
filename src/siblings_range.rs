@@ -1,28 +1,29 @@
 //! Sibling nodes range.
 
+use slotmap::Key;
 use crate::{error::ConsistencyError, relations::connect_neighbors, Arena, NodeId};
 
 /// Siblings range.
 #[derive(Debug, Clone, Copy)]
-pub(crate) struct SiblingsRange {
+pub(crate) struct SiblingsRange<K> {
     /// First node.
-    first: NodeId,
+    first: NodeId<K>,
     /// Last node.
-    last: NodeId,
+    last: NodeId<K>,
 }
 
-impl SiblingsRange {
+impl<K:Key> SiblingsRange<K> {
     /// Creates a new range.
     ///
     /// It is user's responsibility to guarantee that `first` to `last` is a
     /// correct range.
-    pub(crate) fn new(first: NodeId, last: NodeId) -> Self {
+    pub(crate) fn new(first: NodeId<K>, last: NodeId<K>) -> Self {
         Self { first, last }
     }
 
     /// Detaches the range from the siblings out of the range, preserving
     /// sibling relations inside the range.
-    pub(crate) fn detach_from_siblings<T>(self, arena: &mut Arena<T>) -> DetachedSiblingsRange {
+    pub(crate) fn detach_from_siblings<T>(self, arena: &mut Arena<K, T>) -> DetachedSiblingsRange<K> {
         // Update children's parents, siblings relations outside the range, and
         // old parent's first and last child nodes.
         let parent = arena[self.first].parent;
@@ -61,14 +62,14 @@ impl SiblingsRange {
 /// `rewrite_parents()`.
 #[derive(Debug, Clone, Copy)]
 #[must_use = "This range can have outdated parent information and they should be updated"]
-pub(crate) struct DetachedSiblingsRange {
+pub(crate) struct DetachedSiblingsRange<K> {
     /// First node.
-    first: NodeId,
+    first: NodeId<K>,
     /// Last node.
-    last: NodeId,
+    last: NodeId<K>,
 }
 
-impl DetachedSiblingsRange {
+impl<K: Key> DetachedSiblingsRange<K> {
     /// Rewrites the parents.
     ///
     /// # Failures
@@ -76,8 +77,8 @@ impl DetachedSiblingsRange {
     /// Returns an error if the given parent is a node in the range.
     pub(crate) fn rewrite_parents<T>(
         &self,
-        arena: &mut Arena<T>,
-        new_parent: Option<NodeId>,
+        arena: &mut Arena<K, T>,
+        new_parent: Option<NodeId<K>>,
     ) -> Result<(), ConsistencyError> {
         // Update parents of children in the range.
         let mut child_opt = Some(self.first);
@@ -105,10 +106,10 @@ impl DetachedSiblingsRange {
     /// Returns an error if the given parent is a node in the range.
     pub(crate) fn transplant<T>(
         self,
-        arena: &mut Arena<T>,
-        parent: Option<NodeId>,
-        previous_sibling: Option<NodeId>,
-        next_sibling: Option<NodeId>,
+        arena: &mut Arena<K, T>,
+        parent: Option<NodeId<K>>,
+        previous_sibling: Option<NodeId<K>>,
+        next_sibling: Option<NodeId<K>>,
     ) -> Result<(), ConsistencyError> {
         // Check that the given arguments are consistent.
         if cfg!(debug_assertions) {
