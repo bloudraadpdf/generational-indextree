@@ -5,9 +5,9 @@ use core::fmt;
 #[cfg(feature = "std")]
 use std::fmt;
 
-use generational_arena::Index;
 #[cfg(feature = "deser")]
 use serde::{Deserialize, Serialize};
+use slotmap::DefaultKey;
 
 use crate::{
     relations::insert_with_neighbors, siblings_range::SiblingsRange, Ancestors, Arena, Children,
@@ -24,7 +24,7 @@ use crate::{
 /// [`Arena`]: struct.Arena.html
 /// [`Node`]: struct.Node.html
 pub struct NodeId {
-    index: Index,
+    index: DefaultKey,
 }
 
 impl fmt::Display for NodeId {
@@ -33,20 +33,20 @@ impl fmt::Display for NodeId {
     }
 }
 
-impl From<NodeId> for Index {
-    fn from(node_id: NodeId) -> Index {
+impl From<NodeId> for DefaultKey {
+    fn from(node_id: NodeId) -> DefaultKey {
         node_id.index
     }
 }
 
 impl NodeId {
     /// Returns index.
-    pub(crate) fn get_index(self) -> Index {
+    pub(crate) fn get_index(self) -> DefaultKey {
         self.index
     }
 
     /// Creates a new `NodeId` from the given index.
-    pub(crate) fn from_index(index: Index) -> Self {
+    pub(crate) fn from_index(index: DefaultKey) -> Self {
         NodeId { index }
     }
 
@@ -535,7 +535,7 @@ impl NodeId {
         if new_child == self {
             return Err(NodeError::AppendSelf);
         }
-        if !arena.nodes.contains(self.index) || !arena.nodes.contains(new_child.index) {
+        if !arena.nodes.contains_key(self.index) || !arena.nodes.contains_key(new_child.index) {
             // if arena[self].is_removed() || arena[new_child].is_removed() {
             return Err(NodeError::Removed);
         }
@@ -622,7 +622,7 @@ impl NodeId {
         if new_child == self {
             return Err(NodeError::PrependSelf);
         }
-        if !arena.nodes.contains(self.index) || !arena.nodes.contains(new_child.index) {
+        if !arena.nodes.contains_key(self.index) || !arena.nodes.contains_key(new_child.index) {
             return Err(NodeError::Removed);
         }
         insert_with_neighbors(arena, new_child, Some(self), None, arena[self].first_child)
@@ -713,7 +713,7 @@ impl NodeId {
         if new_sibling == self {
             return Err(NodeError::InsertAfterSelf);
         }
-        if !arena.nodes.contains(self.index) || !arena.nodes.contains(new_sibling.index) {
+        if !arena.nodes.contains_key(self.index) || !arena.nodes.contains_key(new_sibling.index) {
             return Err(NodeError::Removed);
         }
         new_sibling.detach(arena);
@@ -807,7 +807,7 @@ impl NodeId {
         if new_sibling == self {
             return Err(NodeError::InsertBeforeSelf);
         }
-        if !arena.nodes.contains(self.index) || !arena.nodes.contains(new_sibling.index) {
+        if !arena.nodes.contains_key(self.index) || !arena.nodes.contains_key(new_sibling.index) {
             return Err(NodeError::Removed);
         }
         new_sibling.detach(arena);

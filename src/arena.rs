@@ -8,9 +8,9 @@ use core::{
 #[cfg(feature = "std")]
 use std::ops::{Index, IndexMut};
 
-use generational_arena::Arena as GenerationalArena;
 #[cfg(feature = "deser")]
 use serde::{Deserialize, Serialize};
+use slotmap::{DefaultKey, SlotMap};
 
 #[cfg(feature = "par_iter")]
 use rayon::prelude::*;
@@ -23,7 +23,7 @@ use crate::{Node, NodeId};
 ///
 /// [`Node`]: struct.Node.html
 pub struct Arena<T> {
-    pub(crate) nodes: GenerationalArena<Node<T>>,
+    pub(crate) nodes: SlotMap<DefaultKey, Node<T>>,
 }
 
 impl<T> Arena<T> {
@@ -35,7 +35,7 @@ impl<T> Arena<T> {
     /// Create a new empty `Arena` with pre-allocated memory for `n` items.
     pub fn with_capacity(n: usize) -> Arena<T> {
         Self {
-            nodes: GenerationalArena::with_capacity(n),
+            nodes: SlotMap::with_capacity_and_key(n),
         }
     }
 
@@ -80,7 +80,7 @@ impl<T> Arena<T> {
     pub fn new_node_with(&mut self, create: impl FnOnce(NodeId) -> T) -> NodeId {
         NodeId::from_index(
             self.nodes
-                .insert_with(|idx| Node::new(create(NodeId::from_index(idx)))),
+                .insert_with_key(|idx| Node::new(create(NodeId::from_index(idx)))),
         )
     }
 
@@ -207,7 +207,13 @@ impl<T> Arena<T> {
         i1: NodeId,
         i2: NodeId,
     ) -> (Option<&mut Node<T>>, Option<&mut Node<T>>) {
-        self.nodes.get2_mut(i1.get_index(), i2.get_index())
+        self.nodes
+            .get_disjoint_mut([i1.get_index(), i2.get_index()])
+            .map(|pair| {
+                let [zero, one] = pair;
+                (Some(zero), Some(one))
+            })
+            .unwrap_or((None, None))
     }
 
     /// Returns an iterator of all nodes in the arena in storage-order.
@@ -264,7 +270,7 @@ impl<T> Arena<T> {
 impl<T> Default for Arena<T> {
     fn default() -> Self {
         Self {
-            nodes: GenerationalArena::new(),
+            nodes: SlotMap::with_capacity_and_key(0),
         }
     }
 }
