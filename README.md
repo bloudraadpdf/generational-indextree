@@ -47,6 +47,7 @@ assert_eq!(b.ancestors(arena).into_iter().count(), 2);
 
 version | date        | Change
 ---     | ---         | ---
+1.1.4   | 15-01-2022  | Leaner debug output, fixed !std support, improved test pipeline
 1.1.3   | 10-01-2022  | Fixed serde feature flag, thanks to Tal Liberman for the MR. Added new_node_with method that allow self-referential data, by Chris Laplante
 1.1.2   | 02-12-2020  | Resync to indextree version 4.3.1
 1.1.1   | 20-06-2020  | Resync to indextree version 4.1.0
