@@ -1,10 +1,7 @@
 //! Arena.
 
 #[cfg(not(feature = "std"))]
-use core::{
-    num::NonZeroUsize,
-    ops::{Index, IndexMut},
-};
+use core::ops::{Index, IndexMut};
 #[cfg(feature = "std")]
 use std::ops::{Index, IndexMut};
 
@@ -269,9 +266,11 @@ impl<T> Default for Arena<T> {
     }
 }
 
-impl<T: std::fmt::Debug> std::fmt::Debug for Arena<T> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> core::fmt::Result {
-        f.debug_list().entries(self.nodes.iter()).finish()
+impl<T: core::fmt::Debug> core::fmt::Debug for Arena<T> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_list()
+            .entries(self.nodes.iter().map(|(idx, node)| (idx, &node.data)))
+            .finish()
     }
 }
 
@@ -324,4 +323,24 @@ fn reuse_node() {
     assert_ne!(n1_id, new_n1_id);
     assert_ne!(n2_id, new_n2_id);
     assert_ne!(n3_id, new_n3_id);
+}
+
+#[cfg(feature = "std")]
+#[test]
+fn debug_arena() {
+    let mut arena = Arena::with_capacity(10);
+    let _n1_id = arena.new_node("1");
+    let n2_id = arena.new_node("2");
+    let n3_id = arena.new_node("3");
+    let n4_id = arena.new_node("4");
+    let _n5_id = arena.new_node("5");
+    n2_id.remove(&mut arena);
+    n3_id.remove(&mut arena);
+    n4_id.remove(&mut arena);
+    let _n6_id = arena.new_node("6");
+
+    assert_eq!(
+        format!("{:?}", arena),
+        "[(Index { index: 0, generation: 0 }, \"1\"), (Index { index: 3, generation: 3 }, \"6\"), (Index { index: 4, generation: 0 }, \"5\")]"
+    );
 }

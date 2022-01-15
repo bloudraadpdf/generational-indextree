@@ -43,6 +43,7 @@ test:
     - when: on_success
   script:
     - cargo test
+    - cargo test --no-default-features
     - cargo test --features deser
   cache:
     paths:
