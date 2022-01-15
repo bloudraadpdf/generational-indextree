@@ -17,7 +17,7 @@ use rayon::prelude::*;
 
 use crate::{Node, NodeId};
 
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 #[cfg_attr(feature = "deser", derive(Deserialize, Serialize))]
 /// An `Arena` structure containing certain [`Node`]s.
 ///
@@ -266,6 +266,12 @@ impl<T> Default for Arena<T> {
         Self {
             nodes: GenerationalArena::new(),
         }
+    }
+}
+
+impl<T: std::fmt::Debug> std::fmt::Debug for Arena<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_list().entries(self.nodes.iter()).finish()
     }
 }
 
