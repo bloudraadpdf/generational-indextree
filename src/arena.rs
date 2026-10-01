@@ -36,6 +36,21 @@ impl<T> Arena<T> {
         }
     }
 
+    /// Returns the number of node slots of the arena: the nodes and the free
+    /// slots that a new node can take without an allocation.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use generational_indextree::Arena;
+    /// let arena: Arena<&str> = Arena::with_capacity(10);
+    ///
+    /// assert_eq!(arena.capacity(), 10);
+    /// ```
+    pub fn capacity(&self) -> usize {
+        self.nodes.capacity()
+    }
+
     /// Shrinks the capacity of the arena to its last node.
     ///
     /// The free slots after the last node go, so the arena keeps no memory
