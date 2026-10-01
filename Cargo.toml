@@ -18,7 +18,7 @@ deser = [ "serde", "generational-arena/serde" ]
 std = []
 
 [dependencies]
-generational-arena = "0.2.8"
+generational-arena = { git = "ssh://git@git.bloudraad.io/external/generational-arena.git", rev = "6b07136b46868b2a6e8a10acbecd24da0825e1ac" }
 serde = { version = "1.0.117", features = ["derive"], optional = true }
 
 [[example]]

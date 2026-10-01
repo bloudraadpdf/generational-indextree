@@ -36,6 +36,25 @@ impl<T> Arena<T> {
         }
     }
 
+    /// Shrinks the capacity of the arena to its last node.
+    ///
+    /// The free slots after the last node go, so the arena keeps no memory
+    /// for them. Each node ID stays valid.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use generational_indextree::Arena;
+    /// let mut arena = Arena::with_capacity(10);
+    /// let foo = arena.new_node("foo");
+    /// arena.shrink_to_fit();
+    ///
+    /// assert_eq!(*arena[foo].get(), "foo");
+    /// ```
+    pub fn shrink_to_fit(&mut self) {
+        self.nodes.shrink_to_fit();
+    }
+
     /// Creates a new node from its associated data.
     ///
     /// # Panics
