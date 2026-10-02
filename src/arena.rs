@@ -51,6 +51,23 @@ impl<T> Arena<T> {
         self.nodes.capacity()
     }
 
+    /// Returns the ID of the node at slot `index`, if a node occupies the slot.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use generational_indextree::Arena;
+    /// let mut arena = Arena::new();
+    /// let foo = arena.new_node("foo");
+    /// assert_eq!(arena.node_id_at(0), Some(foo));
+    /// assert_eq!(arena.node_id_at(1), None);
+    /// ```
+    pub fn node_id_at(&self, index: usize) -> Option<NodeId> {
+        self.nodes
+            .get_unknown_gen(index)
+            .map(|(_, index)| NodeId::from_index(index))
+    }
+
     /// Shrinks the capacity of the arena to its last node.
     ///
     /// The free slots after the last node go, so the arena keeps no memory
