@@ -16,6 +16,7 @@ use crate::{Node, NodeId};
 
 #[derive(Clone)]
 #[cfg_attr(feature = "deser", derive(Deserialize, Serialize))]
+#[cfg_attr(feature = "deser", serde(bound(deserialize = "T: Deserialize<'de> + Clone")))]
 /// An `Arena` structure containing certain [`Node`]s.
 ///
 /// [`Node`]: struct.Node.html
@@ -24,18 +25,6 @@ pub struct Arena<T> {
 }
 
 impl<T> Arena<T> {
-    /// Creates a new empty `Arena`.
-    pub fn new() -> Arena<T> {
-        Self::default()
-    }
-
-    /// Create a new empty `Arena` with pre-allocated memory for `n` items.
-    pub fn with_capacity(n: usize) -> Arena<T> {
-        Self {
-            nodes: GenerationalArena::with_capacity(n),
-        }
-    }
-
     /// Returns the number of node slots of the arena: the nodes and the free
     /// slots that a new node can take without an allocation.
     ///
@@ -66,70 +55,6 @@ impl<T> Arena<T> {
         self.nodes
             .get_unknown_gen(index)
             .map(|(_, index)| NodeId::from_index(index))
-    }
-
-    /// Shrinks the capacity of the arena to its last node.
-    ///
-    /// The free slots after the last node go, so the arena keeps no memory
-    /// for them. Each node ID stays valid.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// # use generational_indextree::Arena;
-    /// let mut arena = Arena::with_capacity(10);
-    /// let foo = arena.new_node("foo");
-    /// arena.shrink_to_fit();
-    ///
-    /// assert_eq!(*arena[foo].get(), "foo");
-    /// ```
-    pub fn shrink_to_fit(&mut self) {
-        self.nodes.shrink_to_fit();
-    }
-
-    /// Creates a new node from its associated data.
-    ///
-    /// # Panics
-    ///
-    /// Panics if the arena already has `usize::max_value()` nodes.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// # use generational_indextree::Arena;
-    /// let mut arena = Arena::new();
-    /// let foo = arena.new_node("foo");
-    ///
-    /// assert_eq!(*arena[foo].get(), "foo");
-    /// ```
-    pub fn new_node(&mut self, data: T) -> NodeId {
-        NodeId::from_index(self.nodes.insert(Node::new(data)))
-    }
-
-    /// Creates a new node via specified `create` function.
-    ///
-    /// `create` is called with the new node's node ID, allowing nodes that know their own ID.
-    ///
-    /// # Panics
-    ///
-    /// Panics if the arena already has `usize::max_value()` nodes.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// # use generational_indextree::{Arena, NodeId};
-    /// let mut arena = Arena::new();
-    /// struct A { id: NodeId, val: u32 }
-    /// let foo = arena.new_node_with(|id| A { id, val: 10 });
-    ///
-    /// assert_eq!(arena[foo].get().val, 10);
-    /// assert_eq!(arena[foo].get().id, foo);
-    /// ```
-    pub fn new_node_with(&mut self, create: impl FnOnce(NodeId) -> T) -> NodeId {
-        NodeId::from_index(
-            self.nodes
-                .insert_with(|idx| Node::new(create(NodeId::from_index(idx)))),
-        )
     }
 
     /// Counts the number of nodes in arena and returns it.
@@ -201,6 +126,135 @@ impl<T> Arena<T> {
         self.nodes.get(id.get_index())
     }
 
+    /// Returns an iterator of all nodes in the arena in storage-order.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use generational_indextree::Arena;
+    /// let mut arena = Arena::new();
+    /// let _foo = arena.new_node("foo");
+    /// let _bar = arena.new_node("bar");
+    ///
+    /// let mut iter = arena.iter();
+    /// assert_eq!(iter.next().map(|node| *node.get()), Some("foo"));
+    /// assert_eq!(iter.next().map(|node| *node.get()), Some("bar"));
+    /// assert_eq!(iter.next().map(|node| *node.get()), None);
+    /// ```
+    ///
+    /// ```
+    /// # use generational_indextree::Arena;
+    /// let mut arena = Arena::new();
+    /// let _foo = arena.new_node("foo");
+    /// let bar = arena.new_node("bar");
+    /// bar.remove(&mut arena);
+    ///
+    /// let mut iter = arena.iter();
+    /// assert_eq!(iter.next().map(|node| *node.get()), Some("foo"));
+    /// assert_eq!(iter.next().map(|node| *node.get()), None);
+    /// ```
+    pub fn iter(&self) -> impl Iterator<Item = &Node<T>> {
+        self.nodes.iter().map(|pair| pair.1)
+    }
+
+    /// Returns an iterator of all pairs (NodeId, &Node<T>) in the arena in storage-order.
+    ///
+    /// ```
+    /// # use generational_indextree::Arena;
+    /// let mut arena = Arena::new();
+    /// let _foo = arena.new_node("foo");
+    /// let _bar = arena.new_node("bar");
+    ///
+    /// let mut iter = arena.iter_pairs();
+    /// assert_eq!(iter.next().map(|node| (node.0, *node.1.get())), Some((_foo, "foo")));
+    /// assert_eq!(iter.next().map(|node| (node.0, *node.1.get())), Some((_bar, "bar")));
+    /// assert_eq!(iter.next().map(|node| (node.0, *node.1.get())), None);
+    /// ```
+    pub fn iter_pairs(&self) -> impl Iterator<Item = (NodeId, &Node<T>)> {
+        self.nodes
+            .iter()
+            .map(|pair| (NodeId::from_index(pair.0), pair.1))
+    }
+}
+
+impl<T: Clone> Arena<T> {
+    /// Creates a new empty `Arena`.
+    pub fn new() -> Arena<T> {
+        Self::default()
+    }
+
+    /// Create a new empty `Arena` with pre-allocated memory for `n` items.
+    pub fn with_capacity(n: usize) -> Arena<T> {
+        Self {
+            nodes: GenerationalArena::with_capacity(n),
+        }
+    }
+
+    /// Shrinks the capacity of the arena to its last node.
+    ///
+    /// The free slots after the last node go, so the arena keeps no memory
+    /// for them. Each node ID stays valid.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use generational_indextree::Arena;
+    /// let mut arena = Arena::with_capacity(10);
+    /// let foo = arena.new_node("foo");
+    /// arena.shrink_to_fit();
+    ///
+    /// assert_eq!(*arena[foo].get(), "foo");
+    /// ```
+    pub fn shrink_to_fit(&mut self) {
+        self.nodes.shrink_to_fit();
+    }
+
+    /// Creates a new node from its associated data.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the arena already has `usize::max_value()` nodes.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use generational_indextree::Arena;
+    /// let mut arena = Arena::new();
+    /// let foo = arena.new_node("foo");
+    ///
+    /// assert_eq!(*arena[foo].get(), "foo");
+    /// ```
+    pub fn new_node(&mut self, data: T) -> NodeId {
+        NodeId::from_index(self.nodes.insert(Node::new(data)))
+    }
+
+    /// Creates a new node via specified `create` function.
+    ///
+    /// `create` is called with the new node's node ID, allowing nodes that know their own ID.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the arena already has `usize::max_value()` nodes.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use generational_indextree::{Arena, NodeId};
+    /// let mut arena = Arena::new();
+    /// #[derive(Clone)]
+    /// struct A { id: NodeId, val: u32 }
+    /// let foo = arena.new_node_with(|id| A { id, val: 10 });
+    ///
+    /// assert_eq!(arena[foo].get().val, 10);
+    /// assert_eq!(arena[foo].get().id, foo);
+    /// ```
+    pub fn new_node_with(&mut self, create: impl FnOnce(NodeId) -> T) -> NodeId {
+        NodeId::from_index(
+            self.nodes
+                .insert_with(|idx| Node::new(create(NodeId::from_index(idx)))),
+        )
+    }
+
     /// Returns a mutable reference to the node with the given id if in the
     /// arena.
     ///
@@ -257,59 +311,9 @@ impl<T> Arena<T> {
     ) -> (Option<&mut Node<T>>, Option<&mut Node<T>>) {
         self.nodes.get2_mut(i1.get_index(), i2.get_index())
     }
-
-    /// Returns an iterator of all nodes in the arena in storage-order.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// # use generational_indextree::Arena;
-    /// let mut arena = Arena::new();
-    /// let _foo = arena.new_node("foo");
-    /// let _bar = arena.new_node("bar");
-    ///
-    /// let mut iter = arena.iter();
-    /// assert_eq!(iter.next().map(|node| *node.get()), Some("foo"));
-    /// assert_eq!(iter.next().map(|node| *node.get()), Some("bar"));
-    /// assert_eq!(iter.next().map(|node| *node.get()), None);
-    /// ```
-    ///
-    /// ```
-    /// # use generational_indextree::Arena;
-    /// let mut arena = Arena::new();
-    /// let _foo = arena.new_node("foo");
-    /// let bar = arena.new_node("bar");
-    /// bar.remove(&mut arena);
-    ///
-    /// let mut iter = arena.iter();
-    /// assert_eq!(iter.next().map(|node| *node.get()), Some("foo"));
-    /// assert_eq!(iter.next().map(|node| *node.get()), None);
-    /// ```
-    pub fn iter(&self) -> impl Iterator<Item = &Node<T>> {
-        self.nodes.iter().map(|pair| pair.1)
-    }
-
-    /// Returns an iterator of all pairs (NodeId, &Node<T>) in the arena in storage-order.
-    ///
-    /// ```
-    /// # use generational_indextree::Arena;
-    /// let mut arena = Arena::new();
-    /// let _foo = arena.new_node("foo");
-    /// let _bar = arena.new_node("bar");
-    ///
-    /// let mut iter = arena.iter_pairs();
-    /// assert_eq!(iter.next().map(|node| (node.0, *node.1.get())), Some((_foo, "foo")));
-    /// assert_eq!(iter.next().map(|node| (node.0, *node.1.get())), Some((_bar, "bar")));
-    /// assert_eq!(iter.next().map(|node| (node.0, *node.1.get())), None);
-    /// ```
-    pub fn iter_pairs(&self) -> impl Iterator<Item = (NodeId, &Node<T>)> {
-        self.nodes
-            .iter()
-            .map(|pair| (NodeId::from_index(pair.0), pair.1))
-    }
 }
 
-impl<T> Default for Arena<T> {
+impl<T: Clone> Default for Arena<T> {
     fn default() -> Self {
         Self {
             nodes: GenerationalArena::new(),
@@ -333,7 +337,7 @@ impl<T> Index<NodeId> for Arena<T> {
     }
 }
 
-impl<T> IndexMut<NodeId> for Arena<T> {
+impl<T: Clone> IndexMut<NodeId> for Arena<T> {
     fn index_mut(&mut self, node: NodeId) -> &mut Node<T> {
         &mut self.nodes[node.get_index()]
     }

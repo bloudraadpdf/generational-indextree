@@ -447,7 +447,7 @@ impl NodeId {
     /// assert_eq!(iter.next(), Some(n1_3));
     /// assert_eq!(iter.next(), None);
     /// ```
-    pub fn detach<T>(self, arena: &mut Arena<T>) {
+    pub fn detach<T: Clone>(self, arena: &mut Arena<T>) {
         let range = SiblingsRange::new(self, self).detach_from_siblings(arena);
         range
             .rewrite_parents(arena, None)
@@ -497,7 +497,7 @@ impl NodeId {
     ///
     /// [`Node::is_removed()`]: struct.Node.html#method.is_removed
     /// [`remove`]: struct.NodeId.html#method.remove
-    pub fn append<T>(self, new_child: NodeId, arena: &mut Arena<T>) {
+    pub fn append<T: Clone>(self, new_child: NodeId, arena: &mut Arena<T>) {
         self.checked_append(new_child, arena)
             .expect("Preconditions not met: invalid argument");
     }
@@ -527,7 +527,7 @@ impl NodeId {
     /// [`NodeError::AppendSelf`]: enum.NodeError.html#variant.AppendSelf
     /// [`NodeError::Removed`]: enum.NodeError.html#variant.Removed
     /// [`remove`]: struct.NodeId.html#method.remove
-    pub fn checked_append<T>(
+    pub fn checked_append<T: Clone>(
         self,
         new_child: NodeId,
         arena: &mut Arena<T>,
@@ -584,7 +584,7 @@ impl NodeId {
     ///
     /// [`Node::is_removed()`]: struct.Node.html#method.is_removed
     /// [`remove`]: struct.NodeId.html#method.remove
-    pub fn prepend<T>(self, new_child: NodeId, arena: &mut Arena<T>) {
+    pub fn prepend<T: Clone>(self, new_child: NodeId, arena: &mut Arena<T>) {
         self.checked_prepend(new_child, arena)
             .expect("Preconditions not met: invalid argument");
     }
@@ -614,7 +614,7 @@ impl NodeId {
     /// [`NodeError::PrependSelf`]: enum.NodeError.html#variant.PrependSelf
     /// [`NodeError::Removed`]: enum.NodeError.html#variant.Removed
     /// [`remove`]: struct.NodeId.html#method.remove
-    pub fn checked_prepend<T>(
+    pub fn checked_prepend<T: Clone>(
         self,
         new_child: NodeId,
         arena: &mut Arena<T>,
@@ -675,7 +675,7 @@ impl NodeId {
     ///
     /// [`Node::is_removed()`]: struct.Node.html#method.is_removed
     /// [`remove`]: struct.NodeId.html#method.remove
-    pub fn insert_after<T>(self, new_sibling: NodeId, arena: &mut Arena<T>) {
+    pub fn insert_after<T: Clone>(self, new_sibling: NodeId, arena: &mut Arena<T>) {
         self.checked_insert_after(new_sibling, arena)
             .expect("Preconditions not met: invalid argument");
     }
@@ -705,7 +705,7 @@ impl NodeId {
     /// [`NodeError::InsertAfterSelf`]: enum.NodeError.html#variant.InsertAfterSelf
     /// [`NodeError::Removed`]: enum.NodeError.html#variant.Removed
     /// [`remove`]: struct.NodeId.html#method.remove
-    pub fn checked_insert_after<T>(
+    pub fn checked_insert_after<T: Clone>(
         self,
         new_sibling: NodeId,
         arena: &mut Arena<T>,
@@ -770,7 +770,7 @@ impl NodeId {
     /// ```
     ///
     /// [`remove`]: struct.NodeId.html#method.remove
-    pub fn insert_before<T>(self, new_sibling: NodeId, arena: &mut Arena<T>) {
+    pub fn insert_before<T: Clone>(self, new_sibling: NodeId, arena: &mut Arena<T>) {
         self.checked_insert_before(new_sibling, arena)
             .expect("Preconditions not met: invalid argument");
     }
@@ -799,7 +799,7 @@ impl NodeId {
     /// [`NodeError::InsertBeforeSelf`]: enum.NodeError.html#variant.InsertBeforeSelf
     /// [`NodeError::Removed`]: enum.NodeError.html#variant.Removed
     /// [`remove`]: struct.NodeId.html#method.remove
-    pub fn checked_insert_before<T>(
+    pub fn checked_insert_before<T: Clone>(
         self,
         new_sibling: NodeId,
         arena: &mut Arena<T>,
@@ -866,7 +866,7 @@ impl NodeId {
     /// assert_eq!(iter.next(), None);
     /// ```
     ///
-    pub fn remove<T>(self, arena: &mut Arena<T>) {
+    pub fn remove<T: Clone>(self, arena: &mut Arena<T>) {
         debug_assert_triangle_nodes!(
             arena,
             arena[self].parent,
@@ -941,7 +941,7 @@ impl NodeId {
     /// assert_eq!(iter.next(), None);
     /// ```
     ///
-    pub fn remove_subtree<T>(self, arena: &mut Arena<T>) {
+    pub fn remove_subtree<T: Clone>(self, arena: &mut Arena<T>) {
         self.detach(arena);
 
         // // use a preorder traversal to remove node.

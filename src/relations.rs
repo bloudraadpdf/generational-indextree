@@ -57,7 +57,7 @@ pub(crate) fn assert_triangle_nodes<T>(
 ///    /    \
 /// prev -> next
 /// ```
-pub(crate) fn connect_neighbors<T>(
+pub(crate) fn connect_neighbors<T: Clone>(
     arena: &mut Arena<T>,
     parent: Option<NodeId>,
     previous: Option<NodeId>,
@@ -118,7 +118,7 @@ pub(crate) fn connect_neighbors<T>(
 ///   /       |      \
 /// prev -> (new) -> next
 /// ```
-pub(crate) fn insert_with_neighbors<T>(
+pub(crate) fn insert_with_neighbors<T: Clone>(
     arena: &mut Arena<T>,
     new: NodeId,
     parent: Option<NodeId>,

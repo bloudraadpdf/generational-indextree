@@ -165,6 +165,7 @@ fn insert_removed_node() {
 #[test]
 fn new_node_with() {
     let mut arena = Arena::new();
+    #[derive(Clone)]
     struct A {
         id: NodeId,
         val: u32,

@@ -22,7 +22,7 @@ impl SiblingsRange {
 
     /// Detaches the range from the siblings out of the range, preserving
     /// sibling relations inside the range.
-    pub(crate) fn detach_from_siblings<T>(self, arena: &mut Arena<T>) -> DetachedSiblingsRange {
+    pub(crate) fn detach_from_siblings<T: Clone>(self, arena: &mut Arena<T>) -> DetachedSiblingsRange {
         // Update children's parents, siblings relations outside the range, and
         // old parent's first and last child nodes.
         let parent = arena[self.first].parent;
@@ -74,7 +74,7 @@ impl DetachedSiblingsRange {
     /// # Failures
     ///
     /// Returns an error if the given parent is a node in the range.
-    pub(crate) fn rewrite_parents<T>(
+    pub(crate) fn rewrite_parents<T: Clone>(
         &self,
         arena: &mut Arena<T>,
         new_parent: Option<NodeId>,
@@ -103,7 +103,7 @@ impl DetachedSiblingsRange {
     /// # Failures
     ///
     /// Returns an error if the given parent is a node in the range.
-    pub(crate) fn transplant<T>(
+    pub(crate) fn transplant<T: Clone>(
         self,
         arena: &mut Arena<T>,
         parent: Option<NodeId>,
