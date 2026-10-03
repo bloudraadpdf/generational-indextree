@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 #[cfg(feature = "par_iter")]
 use rayon::prelude::*;
 
-use crate::{Node, NodeId};
+use crate::{node::Link, Node, NodeId};
 
 #[derive(Clone)]
 #[cfg_attr(feature = "deser", derive(Deserialize, Serialize))]
@@ -38,6 +38,107 @@ impl<T> Arena<T> {
     /// ```
     pub fn capacity(&self) -> usize {
         self.nodes.capacity()
+    }
+
+    /// Returns the ID of the parent of the node `id`, unless the node is the root of its tree, or not in the arena.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use generational_indextree::Arena;
+    /// let mut arena = Arena::new();
+    /// let n1 = arena.new_node("1");
+    /// let n1_1 = arena.new_node("1_1");
+    /// n1.append(n1_1, &mut arena);
+    /// assert_eq!(arena.parent(n1), None);
+    /// assert_eq!(arena.parent(n1_1), Some(n1));
+    /// ```
+    pub fn parent(&self, id: NodeId) -> Option<NodeId> {
+        self.resolve(self.get(id)?.parent)
+    }
+
+    /// Returns the ID of the first child of the node `id`, unless the node is without a child, or not in the arena.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use generational_indextree::Arena;
+    /// let mut arena = Arena::new();
+    /// let n1 = arena.new_node("1");
+    /// let n1_1 = arena.new_node("1_1");
+    /// let n1_2 = arena.new_node("1_2");
+    /// n1.append(n1_1, &mut arena);
+    /// n1.append(n1_2, &mut arena);
+    /// assert_eq!(arena.first_child(n1), Some(n1_1));
+    /// assert_eq!(arena.first_child(n1_1), None);
+    /// ```
+    pub fn first_child(&self, id: NodeId) -> Option<NodeId> {
+        self.resolve(self.get(id)?.first_child)
+    }
+
+    /// Returns the ID of the last child of the node `id`, unless the node is without a child, or not in the arena.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use generational_indextree::Arena;
+    /// let mut arena = Arena::new();
+    /// let n1 = arena.new_node("1");
+    /// let n1_1 = arena.new_node("1_1");
+    /// let n1_2 = arena.new_node("1_2");
+    /// n1.append(n1_1, &mut arena);
+    /// n1.append(n1_2, &mut arena);
+    /// assert_eq!(arena.last_child(n1), Some(n1_2));
+    /// assert_eq!(arena.last_child(n1_2), None);
+    /// ```
+    pub fn last_child(&self, id: NodeId) -> Option<NodeId> {
+        self.resolve(self.get(id)?.last_child)
+    }
+
+    /// Returns the ID of the previous sibling of the node `id`, unless the node is the first of its siblings, or not in the arena.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use generational_indextree::Arena;
+    /// let mut arena = Arena::new();
+    /// let n1 = arena.new_node("1");
+    /// let n1_1 = arena.new_node("1_1");
+    /// let n1_2 = arena.new_node("1_2");
+    /// n1.append(n1_1, &mut arena);
+    /// n1.append(n1_2, &mut arena);
+    /// assert_eq!(arena.previous_sibling(n1_2), Some(n1_1));
+    /// assert_eq!(arena.previous_sibling(n1_1), None);
+    /// ```
+    pub fn previous_sibling(&self, id: NodeId) -> Option<NodeId> {
+        self.resolve(self.get(id)?.previous_sibling)
+    }
+
+    /// Returns the ID of the next sibling of the node `id`, unless the node is the last of its siblings, or not in the arena.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use generational_indextree::Arena;
+    /// let mut arena = Arena::new();
+    /// let n1 = arena.new_node("1");
+    /// let n1_1 = arena.new_node("1_1");
+    /// let n1_2 = arena.new_node("1_2");
+    /// n1.append(n1_1, &mut arena);
+    /// n1.append(n1_2, &mut arena);
+    /// assert_eq!(arena.next_sibling(n1_1), Some(n1_2));
+    /// assert_eq!(arena.next_sibling(n1_2), None);
+    /// ```
+    pub fn next_sibling(&self, id: NodeId) -> Option<NodeId> {
+        self.resolve(self.get(id)?.next_sibling)
+    }
+
+    /// Returns the ID of the linked node.
+    pub(crate) fn resolve(&self, link: Option<Link>) -> Option<NodeId> {
+        link.map(|link| {
+            self.node_id_at(link.slot())
+                .expect("a link names the live node of its slot")
+        })
     }
 
     /// Returns the ID of the node at slot `index`, if a node occupies the slot.

@@ -50,6 +50,11 @@ impl NodeId {
         NodeId { index }
     }
 
+    /// Returns the slot of the node in its arena.
+    pub(crate) fn slot(self) -> usize {
+        self.index.into_raw_parts().0
+    }
+
     /// Returns an iterator of IDs of this node and its ancestors.
     ///
     /// Use [`.skip(1)`][`skip`] or call `.next()` once on the iterator to skip
@@ -436,9 +441,9 @@ impl NodeId {
     /// // `-- (implicit)
     /// //     `-- 1_2
     ///
-    /// assert!(arena[n1_2].parent().is_none());
-    /// assert!(arena[n1_2].previous_sibling().is_none());
-    /// assert!(arena[n1_2].next_sibling().is_none());
+    /// assert!(arena.parent(n1_2).is_none());
+    /// assert!(arena.previous_sibling(n1_2).is_none());
+    /// assert!(arena.next_sibling(n1_2).is_none());
     ///
     /// let mut iter = n1.descendants(&arena);
     /// assert_eq!(iter.next(), Some(n1));
@@ -540,7 +545,7 @@ impl NodeId {
             return Err(NodeError::Removed);
         }
         new_child.detach(arena);
-        insert_with_neighbors(arena, new_child, Some(self), arena[self].last_child, None)
+        insert_with_neighbors(arena, new_child, Some(self), arena.last_child(self), None)
             .expect("Should never fail: `new_child` is not `self` and they are not removed");
 
         Ok(())
@@ -625,7 +630,7 @@ impl NodeId {
         if !arena.nodes.contains(self.index) || !arena.nodes.contains(new_child.index) {
             return Err(NodeError::Removed);
         }
-        insert_with_neighbors(arena, new_child, Some(self), None, arena[self].first_child)
+        insert_with_neighbors(arena, new_child, Some(self), None, arena.first_child(self))
             .expect("Should never fail: `new_child` is not `self` and they are not removed");
 
         Ok(())
@@ -717,10 +722,7 @@ impl NodeId {
             return Err(NodeError::Removed);
         }
         new_sibling.detach(arena);
-        let (next_sibling, parent) = {
-            let current = &arena[self];
-            (current.next_sibling, current.parent)
-        };
+        let (next_sibling, parent) = (arena.next_sibling(self), arena.parent(self));
         insert_with_neighbors(arena, new_sibling, parent, Some(self), next_sibling)
             .expect("Should never fail: `new_sibling` is not `self` and they are not removed");
 
@@ -811,10 +813,7 @@ impl NodeId {
             return Err(NodeError::Removed);
         }
         new_sibling.detach(arena);
-        let (previous_sibling, parent) = {
-            let current = &arena[self];
-            (current.previous_sibling, current.parent)
-        };
+        let (previous_sibling, parent) = (arena.previous_sibling(self), arena.parent(self));
         insert_with_neighbors(arena, new_sibling, parent, previous_sibling, Some(self))
             .expect("Should never fail: `new_sibling` is not `self` and they are not removed");
 
@@ -869,30 +868,27 @@ impl NodeId {
     pub fn remove<T: Clone>(self, arena: &mut Arena<T>) {
         debug_assert_triangle_nodes!(
             arena,
-            arena[self].parent,
-            arena[self].previous_sibling,
+            arena.parent(self),
+            arena.previous_sibling(self),
             Some(self)
         );
         debug_assert_triangle_nodes!(
             arena,
-            arena[self].parent,
+            arena.parent(self),
             Some(self),
-            arena[self].next_sibling
+            arena.next_sibling(self)
         );
-        debug_assert_triangle_nodes!(arena, Some(self), None, arena[self].first_child);
-        debug_assert_triangle_nodes!(arena, Some(self), arena[self].last_child, None);
+        debug_assert_triangle_nodes!(arena, Some(self), None, arena.first_child(self));
+        debug_assert_triangle_nodes!(arena, Some(self), arena.last_child(self), None);
 
         // Retrieve needed values.
-        let (parent, previous_sibling, next_sibling, first_child, last_child) = {
-            let node = &arena[self];
-            (
-                node.parent,
-                node.previous_sibling,
-                node.next_sibling,
-                node.first_child,
-                node.last_child,
-            )
-        };
+        let (parent, previous_sibling, next_sibling, first_child, last_child) = (
+            arena.parent(self),
+            arena.previous_sibling(self),
+            arena.next_sibling(self),
+            arena.first_child(self),
+            arena.last_child(self),
+        );
 
         assert_eq!(first_child.is_some(), last_child.is_some());
         self.detach(arena);

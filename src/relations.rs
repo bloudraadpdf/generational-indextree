@@ -1,6 +1,6 @@
 //! Utilities related to nodes relations.
 
-use crate::{error::ConsistencyError, siblings_range::SiblingsRange, Arena, NodeId};
+use crate::{error::ConsistencyError, node::Link, siblings_range::SiblingsRange, Arena, NodeId};
 
 /// Ensures the given parent, previous, and next nodes are consistent.
 ///
@@ -26,21 +26,25 @@ pub(crate) fn assert_triangle_nodes<T>(
 ) {
     if let Some(previous_node) = previous.map(|id| &arena[id]) {
         assert_eq!(
-            previous_node.parent, parent,
+            previous_node.parent,
+            parent.map(Link::of),
             "`prev->parent` must equal to `parent`"
         );
         assert_eq!(
-            previous_node.next_sibling, next,
+            previous_node.next_sibling,
+            next.map(Link::of),
             "`prev->next` must equal to `next`"
         );
     }
     if let Some(next_node) = next.map(|id| &arena[id]) {
         assert_eq!(
-            next_node.parent, parent,
+            next_node.parent,
+            parent.map(Link::of),
             "`next->parent` must equal to `parent`"
         );
         assert_eq!(
-            next_node.previous_sibling, previous,
+            next_node.previous_sibling,
+            previous.map(Link::of),
             "`next->prev` must equal to `prev`"
         );
     }
@@ -77,19 +81,19 @@ pub(crate) fn connect_neighbors<T: Clone>(
         .map_or((None, None), |node| (node.first_child, node.last_child));
     if let Some(previous) = previous {
         // `previous` ==> `next`
-        arena[previous].next_sibling = next;
-        parent_first_child = parent_first_child.or(Some(previous));
+        arena[previous].next_sibling = next.map(Link::of);
+        parent_first_child = parent_first_child.or(Some(Link::of(previous)));
     } else {
         // `next` is the first child of the parent.
-        parent_first_child = next;
+        parent_first_child = next.map(Link::of);
     }
     if let Some(next) = next {
         // `previous` <== `next`
-        arena[next].previous_sibling = previous;
-        parent_last_child = parent_last_child.or(Some(next));
+        arena[next].previous_sibling = previous.map(Link::of);
+        parent_last_child = parent_last_child.or(Some(Link::of(next)));
     } else {
         // `previous` is the last child of the parent.
-        parent_last_child = previous;
+        parent_last_child = previous.map(Link::of);
     }
 
     if let Some(parent_node) = parent.map(|id| &mut arena[id]) {

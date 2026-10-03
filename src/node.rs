@@ -9,7 +9,35 @@ use serde::{Deserialize, Serialize};
 #[cfg(feature = "std")]
 use std::fmt;
 
+#[cfg(not(feature = "std"))]
+use core::{convert::TryFrom, num::NonZeroU32};
+#[cfg(feature = "std")]
+use std::{convert::TryFrom, num::NonZeroU32};
+
 use crate::NodeId;
+
+/// The slot of a linked node. A link names the live node of its slot: a removal detaches the node from its
+/// relatives first.
+#[derive(PartialEq, Eq, Clone, Copy, Debug)]
+#[cfg_attr(feature = "deser", derive(Deserialize, Serialize))]
+pub(crate) struct Link(NonZeroU32);
+
+impl Link {
+    pub(crate) fn of(id: NodeId) -> Self {
+        let slot = u32::try_from(id.slot()).expect("an arena has fewer than 2^32 slots");
+        Self(NonZeroU32::new(slot + 1).expect("a slot below 2^32 - 1 has a link"))
+    }
+
+    pub(crate) fn slot(self) -> usize {
+        (self.0.get() - 1) as usize
+    }
+}
+
+impl fmt::Display for Link {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.slot())
+    }
+}
 
 #[derive(PartialEq, Eq, Clone, Debug)]
 #[cfg_attr(feature = "deser", derive(Deserialize, Serialize))]
@@ -17,11 +45,11 @@ use crate::NodeId;
 pub struct Node<T> {
     // Keep these private (with read-only accessors) so that we can keep them
     // consistent. E.g. the parent of a node’s child is that node.
-    pub(crate) parent: Option<NodeId>,
-    pub(crate) previous_sibling: Option<NodeId>,
-    pub(crate) next_sibling: Option<NodeId>,
-    pub(crate) first_child: Option<NodeId>,
-    pub(crate) last_child: Option<NodeId>,
+    pub(crate) parent: Option<Link>,
+    pub(crate) previous_sibling: Option<Link>,
+    pub(crate) next_sibling: Option<Link>,
+    pub(crate) first_child: Option<Link>,
+    pub(crate) last_child: Option<Link>,
     /// The actual data which will be stored within the tree.
     pub(crate) data: T,
 }
@@ -47,199 +75,6 @@ impl<T> Node<T> {
             last_child: None,
             data,
         }
-    }
-
-    /// Returns the ID of the parent node, unless this node is the root of the
-    /// tree.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// # use generational_indextree::Arena;
-    /// # let mut arena = Arena::new();
-    /// # let n1 = arena.new_node("1");
-    /// # let n1_1 = arena.new_node("1_1");
-    /// # let n1_2 = arena.new_node("1_2");
-    /// # n1.append(n1_2, &mut arena);
-    /// # let n1_3 = arena.new_node("1_3");
-    /// # n1.append(n1_3, &mut arena);
-    /// # n1.append(n1_1, &mut arena);
-    /// // arena
-    /// // `-- 1
-    /// //     |-- 1_1
-    /// //     |-- 1_2
-    /// //     `-- 1_3
-    /// assert_eq!(arena[n1].parent(), None);
-    /// assert_eq!(arena[n1_1].parent(), Some(n1));
-    /// assert_eq!(arena[n1_2].parent(), Some(n1));
-    /// assert_eq!(arena[n1_3].parent(), Some(n1));
-    /// ```
-    pub fn parent(&self) -> Option<NodeId> {
-        self.parent
-    }
-
-    /// Returns the ID of the first child of this node, unless it has no child.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// # use generational_indextree::Arena;
-    /// # let mut arena = Arena::new();
-    /// # let n1 = arena.new_node("1");
-    /// # let n1_1 = arena.new_node("1_1");
-    /// # n1.append(n1_1, &mut arena);
-    /// # let n1_2 = arena.new_node("1_2");
-    /// # n1.append(n1_2, &mut arena);
-    /// # let n1_3 = arena.new_node("1_3");
-    /// # n1.append(n1_3, &mut arena);
-    /// // arena
-    /// // `-- 1
-    /// //     |-- 1_1
-    /// //     |-- 1_2
-    /// //     `-- 1_3
-    /// assert_eq!(arena[n1].first_child(), Some(n1_1));
-    /// assert_eq!(arena[n1_1].first_child(), None);
-    /// assert_eq!(arena[n1_2].first_child(), None);
-    /// assert_eq!(arena[n1_3].first_child(), None);
-    /// ```
-    pub fn first_child(&self) -> Option<NodeId> {
-        self.first_child
-    }
-
-    /// Returns the ID of the last child of this node, unless it has no child.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// # use generational_indextree::Arena;
-    /// # let mut arena = Arena::new();
-    /// # let n1 = arena.new_node("1");
-    /// # let n1_1 = arena.new_node("1_1");
-    /// # n1.append(n1_1, &mut arena);
-    /// # let n1_2 = arena.new_node("1_2");
-    /// # n1.append(n1_2, &mut arena);
-    /// # let n1_3 = arena.new_node("1_3");
-    /// # n1.append(n1_3, &mut arena);
-    /// // arena
-    /// // `-- 1
-    /// //     |-- 1_1
-    /// //     |-- 1_2
-    /// //     `-- 1_3
-    /// assert_eq!(arena[n1].last_child(), Some(n1_3));
-    /// assert_eq!(arena[n1_1].last_child(), None);
-    /// assert_eq!(arena[n1_2].last_child(), None);
-    /// assert_eq!(arena[n1_3].last_child(), None);
-    /// ```
-    pub fn last_child(&self) -> Option<NodeId> {
-        self.last_child
-    }
-
-    /// Returns the ID of the previous sibling of this node, unless it is a
-    /// first child.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// # use generational_indextree::Arena;
-    /// # let mut arena = Arena::new();
-    /// # let n1 = arena.new_node("1");
-    /// # let n1_1 = arena.new_node("1_1");
-    /// # n1.append(n1_1, &mut arena);
-    /// # let n1_2 = arena.new_node("1_2");
-    /// # n1.append(n1_2, &mut arena);
-    /// # let n1_3 = arena.new_node("1_3");
-    /// # n1.append(n1_3, &mut arena);
-    /// // arena
-    /// // `-- 1
-    /// //     |-- 1_1
-    /// //     |-- 1_2
-    /// //     `-- 1_3
-    /// assert_eq!(arena[n1].previous_sibling(), None);
-    /// assert_eq!(arena[n1_1].previous_sibling(), None);
-    /// assert_eq!(arena[n1_2].previous_sibling(), Some(n1_1));
-    /// assert_eq!(arena[n1_3].previous_sibling(), Some(n1_2));
-    /// ```
-    ///
-    /// Note that newly created nodes are independent toplevel nodes, and they
-    /// are not siblings by default.
-    ///
-    /// ```
-    /// # use generational_indextree::Arena;
-    /// let mut arena = Arena::new();
-    /// let n1 = arena.new_node("1");
-    /// let n2 = arena.new_node("2");
-    /// // arena
-    /// // |-- (implicit)
-    /// // |   `-- 1
-    /// // `-- (implicit)
-    /// //     `-- 2
-    /// assert_eq!(arena[n1].previous_sibling(), None);
-    /// assert_eq!(arena[n2].previous_sibling(), None);
-    ///
-    /// n1.insert_after(n2, &mut arena);
-    /// // arena
-    /// // `-- (implicit)
-    /// //     |-- 1
-    /// //     `-- 2
-    /// assert_eq!(arena[n1].previous_sibling(), None);
-    /// assert_eq!(arena[n2].previous_sibling(), Some(n1));
-    /// ```
-    pub fn previous_sibling(&self) -> Option<NodeId> {
-        self.previous_sibling
-    }
-
-    /// Returns the ID of the next sibling of this node, unless it is a
-    /// last child.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// # use generational_indextree::Arena;
-    /// # let mut arena = Arena::new();
-    /// # let n1 = arena.new_node("1");
-    /// # let n1_1 = arena.new_node("1_1");
-    /// # n1.append(n1_1, &mut arena);
-    /// # let n1_2 = arena.new_node("1_2");
-    /// # n1.append(n1_2, &mut arena);
-    /// # let n1_3 = arena.new_node("1_3");
-    /// # n1.append(n1_3, &mut arena);
-    /// // arena
-    /// // `-- 1
-    /// //     |-- 1_1
-    /// //     |-- 1_2
-    /// //     `-- 1_3
-    /// assert_eq!(arena[n1].next_sibling(), None);
-    /// assert_eq!(arena[n1_1].next_sibling(), Some(n1_2));
-    /// assert_eq!(arena[n1_2].next_sibling(), Some(n1_3));
-    /// assert_eq!(arena[n1_3].next_sibling(), None);
-    /// ```
-    ///
-    /// Note that newly created nodes are independent toplevel nodes, and they
-    /// are not siblings by default.
-    ///
-    /// ```
-    /// # use generational_indextree::Arena;
-    /// let mut arena = Arena::new();
-    /// let n1 = arena.new_node("1");
-    /// let n2 = arena.new_node("2");
-    /// // arena
-    /// // |-- (implicit)
-    /// // |   `-- 1
-    /// // `-- (implicit)
-    /// //     `-- 2
-    /// assert_eq!(arena[n1].next_sibling(), None);
-    /// assert_eq!(arena[n2].next_sibling(), None);
-    ///
-    /// n1.insert_after(n2, &mut arena);
-    /// // arena
-    /// // `-- (implicit)
-    /// //     |-- 1
-    /// //     `-- 2
-    /// assert_eq!(arena[n1].next_sibling(), Some(n2));
-    /// assert_eq!(arena[n2].next_sibling(), None);
-    /// ```
-    pub fn next_sibling(&self) -> Option<NodeId> {
-        self.next_sibling
     }
 
     /// Checks if the node is detached.

@@ -26,7 +26,7 @@ fn success_create() {
     let c = new!(); // 10
     assert!(b.checked_append(c, arena).is_ok());
 
-    arena[c].previous_sibling().unwrap().detach(arena);
+    arena.previous_sibling(c).unwrap().detach(arena);
 
     assert_eq!(
         b.descendants(arena)
@@ -174,4 +174,12 @@ fn new_node_with() {
 
     assert_eq!(arena[foo].get().val, 10);
     assert_eq!(arena[foo].get().id, foo);
+}
+
+#[test]
+fn a_node_keeps_each_link_in_four_bytes() {
+    assert_eq!(
+        std::mem::size_of::<generational_indextree::Node<u64>>(),
+        (5 * 4 + std::mem::size_of::<u64>()).next_multiple_of(std::mem::align_of::<u64>())
+    );
 }

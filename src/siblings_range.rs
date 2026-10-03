@@ -1,6 +1,6 @@
 //! Sibling nodes range.
 
-use crate::{error::ConsistencyError, relations::connect_neighbors, Arena, NodeId};
+use crate::{error::ConsistencyError, node::Link, relations::connect_neighbors, Arena, NodeId};
 
 /// Siblings range.
 #[derive(Debug, Clone, Copy)]
@@ -25,12 +25,14 @@ impl SiblingsRange {
     pub(crate) fn detach_from_siblings<T: Clone>(self, arena: &mut Arena<T>) -> DetachedSiblingsRange {
         // Update children's parents, siblings relations outside the range, and
         // old parent's first and last child nodes.
-        let parent = arena[self.first].parent;
+        let parent = arena.parent(self.first);
 
         // Update siblings relations outside the range and old parent's
         // children if necessary.
-        let prev_of_range = arena[self.first].previous_sibling.take();
-        let next_of_range = arena[self.last].next_sibling.take();
+        let prev_of_range = arena.previous_sibling(self.first);
+        let next_of_range = arena.next_sibling(self.last);
+        arena[self.first].previous_sibling = None;
+        arena[self.last].next_sibling = None;
         connect_neighbors(arena, parent, prev_of_range, next_of_range);
 
         if cfg!(debug_assertions) {
@@ -42,8 +44,18 @@ impl SiblingsRange {
                     parent_node.first_child.is_some(),
                     parent_node.last_child.is_some()
                 );
-                debug_assert_triangle_nodes!(arena, parent, None, parent_node.first_child);
-                debug_assert_triangle_nodes!(arena, parent, parent_node.last_child, None);
+                debug_assert_triangle_nodes!(
+                    arena,
+                    parent,
+                    None,
+                    arena.resolve(parent_node.first_child)
+                );
+                debug_assert_triangle_nodes!(
+                    arena,
+                    parent,
+                    arena.resolve(parent_node.last_child),
+                    None
+                );
             }
         }
 
@@ -86,9 +98,8 @@ impl DetachedSiblingsRange {
                 // Attempt to set the node itself as its parent.
                 return Err(ConsistencyError::ParentChildLoop);
             }
-            let child_node = &mut arena[child];
-            child_node.parent = new_parent;
-            child_opt = child_node.next_sibling;
+            arena[child].parent = new_parent.map(Link::of);
+            child_opt = arena.next_sibling(child);
         }
 
         Ok(())
@@ -113,10 +124,10 @@ impl DetachedSiblingsRange {
         // Check that the given arguments are consistent.
         if cfg!(debug_assertions) {
             if let Some(previous_sibling) = previous_sibling {
-                debug_assert_eq!(arena[previous_sibling].parent, parent);
+                debug_assert_eq!(arena.parent(previous_sibling), parent);
             }
             if let Some(next_sibling) = next_sibling {
-                debug_assert_eq!(arena[next_sibling].parent, parent);
+                debug_assert_eq!(arena.parent(next_sibling), parent);
             }
             debug_assert_triangle_nodes!(arena, parent, previous_sibling, next_sibling);
             if let Some(parent_node) = parent.map(|id| &arena[id]) {
@@ -146,8 +157,18 @@ impl DetachedSiblingsRange {
                     parent_node.first_child.is_some() && parent_node.last_child.is_some(),
                     "parent should have children (at least `self.first`)"
                 );
-                debug_assert_triangle_nodes!(arena, parent, None, parent_node.first_child);
-                debug_assert_triangle_nodes!(arena, parent, parent_node.last_child, None);
+                debug_assert_triangle_nodes!(
+                    arena,
+                    parent,
+                    None,
+                    arena.resolve(parent_node.first_child)
+                );
+                debug_assert_triangle_nodes!(
+                    arena,
+                    parent,
+                    arena.resolve(parent_node.last_child),
+                    None
+                );
             }
         }
 
