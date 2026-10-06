@@ -10,7 +10,7 @@ use generational_arena::Index;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    relations::insert_with_neighbors, siblings_range::SiblingsRange, Ancestors, Arena, Children,
+    node::Link, relations::insert_with_neighbors, siblings_range::SiblingsRange, Ancestors, Arena, Children,
     Descendants, FollowingSiblings, NodeError, PrecedingSiblings, ReverseChildren, ReverseTraverse,
     Traverse,
 };
@@ -900,6 +900,27 @@ impl NodeId {
         }
         debug_assert!(arena[self].is_detached());
         arena.nodes.remove(self.index);
+    }
+
+    /// Releases the descendants of the node for good: the node keeps no child, and no subsequent node takes the
+    /// slot of a released node.
+    pub fn release_descendants<T: Clone>(self, arena: &mut Arena<T>) {
+        let mut cursor = arena.first_child(self);
+        while let Some(node) = cursor {
+            if let Some(child) = arena.first_child(node) {
+                cursor = Some(child);
+                continue;
+            }
+            let parent = arena.parent(node).expect("a descendant has a parent");
+            let next = arena.next_sibling(node);
+            arena[parent].first_child = next.map(Link::of);
+            match next {
+                Some(next) => arena[next].previous_sibling = None,
+                None => arena[parent].last_child = None,
+            }
+            arena.nodes.release(node.index);
+            cursor = next.or_else(|| Some(parent).filter(|&parent| parent != self));
+        }
     }
 
     /// Removes a node and its descendants from the arena.
