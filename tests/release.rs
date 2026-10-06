@@ -23,8 +23,11 @@ fn a_node_releases_its_descendants_for_good() {
     root.append(after, &mut arena);
     let count = arena.count();
 
-    released.release_descendants(&mut arena);
+    let mut values = Vec::new();
+    released.release_descendants(&mut arena, |value| values.push(value));
 
+    values.sort_unstable();
+    assert_eq!(values, (10..10 + descendants.len()).collect::<Vec<_>>());
     assert_eq!(arena.count(), count - descendants.len());
     assert!(arena.first_child(released).is_none());
     assert!(arena.last_child(released).is_none());

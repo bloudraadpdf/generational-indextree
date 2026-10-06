@@ -902,9 +902,9 @@ impl NodeId {
         arena.nodes.remove(self.index);
     }
 
-    /// Releases the descendants of the node for good: the node keeps no child, and no subsequent node takes the
-    /// slot of a released node.
-    pub fn release_descendants<T: Clone>(self, arena: &mut Arena<T>) {
+    /// Releases the descendants of the node for good and gives the data of each to `released`. The node keeps no
+    /// child, and no subsequent node takes the slot of a released node.
+    pub fn release_descendants<T: Clone>(self, arena: &mut Arena<T>, mut released: impl FnMut(T)) {
         fn first_leaf<T>(arena: &Arena<T>, mut node: NodeId) -> NodeId {
             while let Some(child) = arena.first_child(node) {
                 node = child;
@@ -919,7 +919,7 @@ impl NodeId {
         loop {
             let next = arena.next_sibling(node);
             let parent = arena.parent(node).expect("a descendant has a parent");
-            arena.nodes.release(node.index);
+            released(arena.nodes.release(node.index).expect("a descendant is in the arena").data);
             node = match next {
                 Some(sibling) => first_leaf(arena, sibling),
                 None if parent == self => break,
