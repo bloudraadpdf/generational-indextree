@@ -49,9 +49,9 @@ fn success_detach() {
     let a = arena.new_node(1);
     let b = arena.new_node(1);
     assert!(a.checked_append(b, arena).is_ok());
-    assert_eq!(b.ancestors(arena).into_iter().count(), 2);
+    assert_eq!(b.ancestors(arena).count(), 2);
     b.detach(arena);
-    assert_eq!(b.ancestors(arena).into_iter().count(), 1);
+    assert_eq!(b.ancestors(arena).count(), 1);
 }
 
 #[test]
