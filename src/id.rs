@@ -10,7 +10,7 @@ use generational_arena::Index;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    node::Link, relations::insert_with_neighbors, siblings_range::SiblingsRange, Ancestors, Arena, Children,
+    relations::insert_with_neighbors, siblings_range::SiblingsRange, Ancestors, Arena, Children,
     Descendants, FollowingSiblings, NodeError, PrecedingSiblings, ReverseChildren, ReverseTraverse,
     Traverse,
 };
@@ -905,22 +905,30 @@ impl NodeId {
     /// Releases the descendants of the node for good: the node keeps no child, and no subsequent node takes the
     /// slot of a released node.
     pub fn release_descendants<T: Clone>(self, arena: &mut Arena<T>) {
-        let mut cursor = arena.first_child(self);
-        while let Some(node) = cursor {
-            if let Some(child) = arena.first_child(node) {
-                cursor = Some(child);
-                continue;
+        fn first_leaf<T>(arena: &Arena<T>, mut node: NodeId) -> NodeId {
+            while let Some(child) = arena.first_child(node) {
+                node = child;
             }
-            let parent = arena.parent(node).expect("a descendant has a parent");
-            let next = arena.next_sibling(node);
-            arena[parent].first_child = next.map(Link::of);
-            match next {
-                Some(next) => arena[next].previous_sibling = None,
-                None => arena[parent].last_child = None,
-            }
-            arena.nodes.release(node.index);
-            cursor = next.or_else(|| Some(parent).filter(|&parent| parent != self));
+            node
         }
+
+        let Some(first) = arena.first_child(self) else {
+            return;
+        };
+        let mut node = first_leaf(arena, first);
+        loop {
+            let next = arena.next_sibling(node);
+            let parent = arena.parent(node).expect("a descendant has a parent");
+            arena.nodes.release(node.index);
+            node = match next {
+                Some(sibling) => first_leaf(arena, sibling),
+                None if parent == self => break,
+                None => parent,
+            };
+        }
+        let node = &mut arena[self];
+        node.first_child = None;
+        node.last_child = None;
     }
 
     /// Removes a node and its descendants from the arena.
