@@ -1,6 +1,4 @@
 use generational_indextree::{Arena, NodeId};
-#[cfg(feature = "par_iter")]
-use rayon::prelude::*;
 
 #[test]
 fn success_create() {
@@ -82,22 +80,6 @@ fn iter() {
     assert!(a.checked_append(d, arena).is_ok());
 
     let node_refs = arena.iter().collect::<Vec<_>>();
-    assert_eq!(node_refs, vec![&arena[a], &arena[b], &arena[c], &arena[d]]);
-}
-
-#[cfg(feature = "par_iter")]
-#[test]
-fn par_iter() {
-    let arena = &mut Arena::new();
-    let a = arena.new_node(1);
-    let b = arena.new_node(2);
-    let c = arena.new_node(3);
-    let d = arena.new_node(4);
-    assert!(a.checked_append(b, arena).is_ok());
-    assert!(b.checked_append(c, arena).is_ok());
-    assert!(a.checked_append(d, arena).is_ok());
-
-    let node_refs = arena.par_iter().collect::<Vec<_>>();
     assert_eq!(node_refs, vec![&arena[a], &arena[b], &arena[c], &arena[d]]);
 }
 

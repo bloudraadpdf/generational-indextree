@@ -9,9 +9,6 @@ use generational_arena::Arena as GenerationalArena;
 #[cfg(feature = "deser")]
 use serde::{Deserialize, Serialize};
 
-#[cfg(feature = "par_iter")]
-use rayon::prelude::*;
-
 use crate::{node::Link, Node, NodeId};
 
 #[derive(Clone)]
